@@ -56,7 +56,6 @@
 				$this->_crawler	=	$crawler;
 			}
 
-
 			public function setHttpAdapter(\aidSQL\http\Adapter &$httpAdapter){
 
 				$this->_httpAdapter = $httpAdapter;
@@ -170,13 +169,8 @@
 
 					$db			=	$plugin->getDatabase();
 					$dbUser		=	$plugin->getUser();
-					$dbSchema	=	$plugin->getSchema();
 					$dbVersion	=	$plugin->getVersion();
 
-					if(!is_a($dbSchema,"\\aidSQL\\core\\DatabaseSchema")){
-
-						throw(new \Exception("The getSchema method for your plugin must return a \\aidSQL\\core\\DatabaseSchema Object!"));
-					}
 
 					$this->log("BASIC INFORMATION",0,"cyan",TRUE);
 					$this->log("---------------------------------",0,"white",TRUE);
@@ -187,7 +181,14 @@
 
 					if(!in_array("no-schema",array_keys($this->_options))){
 
-						$tables	=	$dbSchema->getSchema();
+						$dbSchema	=	$plugin->getSchema();
+
+						if(!is_a($dbSchema,"\\aidSQL\\core\\DatabaseSchema")){
+
+							throw(new \Exception("The getSchema method for your plugin must return a \\aidSQL\\core\\DatabaseSchema Object!"));
+						}
+
+						$tables		=	$dbSchema->getSchema();
 
 						if(sizeof($tables)){
 
@@ -262,14 +263,22 @@
 							$this->log("IS ROOT\t:\tYES",0,"light_green",TRUE);
 							$this->log("Trying to get Shell ...",1,"light_cyan",TRUE);
 
-							//Getshell method must return FALSE on error or String path/to/shellLocation
 
-							$g0tShell = $plugin->getShell($this->_pLoader,$this->_crawler,$this->_options);
+							$shellName	=	(isset($this->_options["shell-name"])) ? $this->_options["shell-name"] : NULL;
 
-							if($g0tShell){
-								$this->log("Got Shell => $g0tShell",0,"light_green",TRUE);
-							}else{
-								$this->log("Couldn't get shell :(",2,"yellow",TRUE);
+							$plugin->setShellName($shellName);
+
+							if($plugin->setShellCode($this->_options["shell-code"])){
+
+								//Getshell method must return FALSE on error or String path/to/shellLocation
+								$g0tShell = $plugin->getShell($this->_pLoader,$this->_crawler,$this->_options);
+
+								if($g0tShell){
+									$this->log("Got Shell => $g0tShell",0,"light_green",TRUE);
+								}else{
+									$this->log("Couldn't get shell :(",2,"yellow",TRUE);
+								}
+
 							}
 
 						}else{

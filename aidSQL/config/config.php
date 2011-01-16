@@ -145,7 +145,8 @@
 		"crawl"=>array(
 		),
 		"no-crawl"=>array(
-			"novalue"=>TRUE
+			"novalue"=>TRUE,
+			"overlaps-with"=>array("crawl")
 		),
 		"url-query-char"=>array(
 		),
@@ -187,6 +188,11 @@
 					0,
 					1
 			)
+		),
+		"shell-code"=>array(
+			"overlaps-with"=>array("no-shell")
+		),
+		"shell-name"=>array(
 		)
 	
 	);

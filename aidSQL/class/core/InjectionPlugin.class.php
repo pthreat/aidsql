@@ -20,6 +20,8 @@
 			protected 	$_dbUser									=	NULL;
 			protected	$_config									=	NULL;
 			protected	$_isVulnerable							=	FALSE;
+			protected	$_shellCode								=	NULL;
+			protected	$_shellFileName						=	NULL;
 
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
@@ -38,6 +40,38 @@
 
 				$this->setConfig($config);
 
+			}
+
+			public function setShellCode($shellCode=NULL){
+
+				if(!empty($shellCode)){
+
+					$this->_shellCode	=	\String::hexEncode($shellCode);
+					$this->log("Set shell code to $shellCode",0,"light_cyan");
+					return TRUE;
+				}
+
+				$this->log("Warning! Provided empty shell code",2,"yellow");
+
+				return FALSE;
+
+			}
+
+			public function setShellName($fileName=NULL){
+
+				if(empty($fileName)){
+					$fileName	=	md5(rand(0,time())).".php";	
+					$this->log("Warning, assumed random shell name $fileName, use --shell-name to set a shell name of your own!",2,"yellow");
+				}
+
+				$this->log("Set Shell name : $fileName",0,"light_cyan");
+
+				$this->_shellFileName	=	$fileName;
+
+			}
+
+			public function getShellName(){
+				return $this->_shellFileName;
 			}
 
 			public function setInjectionAttempts($int=0){
@@ -97,7 +131,7 @@
 				$url->addRequestVariable($variable,$value);
 				$this->_httpAdapter->setUrl($url);
 
-				if(isset($this->_config["all"]["decoded-requests"])){
+				if(isset($this->_config["all"]["decode-requests"]) && (bool)$this->_config["all"]["decode-requests"]){
 					$this->log("Fetching ".urldecode($url->getURLAsString()));
 				}else{
 					$this->log("Fetching ".$url->getURLAsString());
