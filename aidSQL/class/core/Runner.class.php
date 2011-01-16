@@ -197,7 +197,18 @@
 
 								foreach($tables as $table){
 
-									$dbSchema->addTable($table,$plugin->getColumns($table));
+									$columns	=	$plugin->getColumns($table);
+
+									var_dump($columns);
+									die();
+									if(!sizeof($columns)){
+
+										$this->log("Unable to fetch schema for table $table",2,"yellow");
+										$columns	=	array("Unable to fetch schema for this table");
+
+									}
+
+									$dbSchema->addTable($table,$columns);
 
 								}
 
