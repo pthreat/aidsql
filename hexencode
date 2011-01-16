@@ -1,0 +1,57 @@
+#!/usr/bin/php
+<?php
+
+        /**
+        * String to HEX | HEX to String. Automatic detection.
+        * This script just takes input from the command line
+        * and transforms an ASCII String to HEX or viceversa.
+        * If you want to use it in a web page just change the $str variable below.
+        * Cheers, Juan Stange.-
+        */
+
+	if(!isset($_SERVER["argv"][1])){
+		die("\nUsage:".basename($_SERVER["argv"][0])." <hex> (i.e 0x7c) |<ascii> \"hello world\"\n\n");
+	}
+
+        $str = $_SERVER["argv"][1];
+
+        function hexEncode($str=NULL){
+
+                if(is_null($str)){
+                        return FALSE;
+                }
+
+                $hexStr = "";
+
+                for($i=0;isset($str[$i]);$i++){
+                        $char = dechex(ord($str[$i]));
+                        $hexStr .= $char;
+                }
+
+                return "0x".$hexStr;
+
+        }
+
+        function asciiEncode($str=NULL){
+
+                if(!preg_match("/^0x[A-Fa-f0-9]+/",$str)){
+                        return FALSE;   //Not a hex string
+                }
+
+                $str = substr($str,2);
+                $asciiString = "";
+
+                for($i=0;isset($str[$i]);$i+=2){
+                        $hexChar = substr($str,$i,2);
+                        $asciiString .= chr(hexdec($hexChar));
+                }
+
+                return $asciiString;
+
+        }
+
+        $return = ($encoded=asciiEncode($str)) ? $encoded : hexEncode($str);
+
+        echo $return."\n";
+
+?>
