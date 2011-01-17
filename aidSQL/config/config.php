@@ -183,6 +183,9 @@
 			"novalue"=>TRUE,
 			"overlaps-with"=>array("no-crawl")
 		),
+		"interactive"=>array(
+			"novalue"=>TRUE
+		),
 		"http-ignore-errors"=>array(
 			"values"=>array(
 					0,
@@ -190,7 +193,6 @@
 			)
 		),
 		"shell-code"=>array(
-			"overlaps-with"=>array("no-shell")
 		),
 		"shell-name"=>array(
 		)
