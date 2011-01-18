@@ -12,6 +12,24 @@
 		
 	}
 
+	function start(){
+
+		if(defined("__START")){
+			return;
+		}
+
+		define("__START",time());
+
+	}
+
+	function finish(aidSQL\core\Logger &$log,$totalVulnerableLinks=0){
+
+		$total	=	time() - __START;
+		$log->log("VULNERABLE LINKS FOUND\t\t: $totalVulnerableLinks",0,"white",TRUE);
+		$log->log("TOTAL TIME\t\t\t: $total seconds",0,"white",TRUE);
+
+	}
+
 	function usageLong(aidSQL\core\Logger &$log){
 
 		$log->setX11Info(FALSE);

@@ -133,6 +133,8 @@
 
 						}
 
+						unset($this->_plugin);
+
 						$this->log("Not vulnerable to this plugin ...");
 
 					}catch(\Exception $e){
@@ -166,7 +168,6 @@
 				try{	
 
 					$plugin		=	$this->_plugin;
-
 					$db			=	$plugin->getDatabase();
 					$dbUser		=	$plugin->getUser();
 					$dbVersion	=	$plugin->getVersion();
@@ -299,6 +300,8 @@
 					return FALSE;
 
 				}
+
+				unset($this->_plugin);
 
 				return TRUE;
 

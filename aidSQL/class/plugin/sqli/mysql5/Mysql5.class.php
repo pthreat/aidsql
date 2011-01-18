@@ -25,7 +25,7 @@
 			private	$_getCompleteSchema			=	TRUE;
 			private	$_version						=	NULL;
 			private	$_strRepeat						=	100;
-			private	$_repeatCharacter				=	"NULL";
+			private	$_repeatCharacter				=	"a";
 
 			public function getPluginName(){
 				return self::PLUGIN_NAME;

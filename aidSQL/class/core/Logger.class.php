@@ -105,12 +105,6 @@
 	
 			private $_frequencies=NULL;
 	
-			/**
-			*@var logArray saves every logged message 
-			*@see self::getArray()
-			*/
-	
-			private $_logArray = array();
 	
 			public function setFilename($filename=NULL){
 	
@@ -183,10 +177,6 @@
 				$type = ($this->_x11Info) ? $this->_infoType($type) : NULL;
 				
 	
-				$this->logArray[] =	array(
-												"type"	=>$type,
-												"message"=>$msg
-											);
 
 				$origMsg	=	$msg;	
 				$msg		= $this->_prepend.$type." ".$date.$msg.$this->_append;
@@ -435,14 +425,6 @@
 				return $this->_frequencies;
 			}
 	
-			/**
-			* Returns an array with everything that was logged
-			*/
-
-			public function getArray(){
-
-				return $this->logArray;
-			}
 
 			public function getEcho(){
 				return $this->_echo;
