@@ -17,11 +17,13 @@
 				$parser->setLog($this->_logger);
 				$parser->setOpenTag("NULL");
 				$parser->setCloseTag("NULL");
-
 				$this->setParser($parser);
-				$this->setFieldWrapper("CONCAT(0x4e554c4c,%value%,0x4e554c4c)");
-
-				parent::isVulnerable();
+				$this->_queryBuilder->union(array(1,2,3,4,5));
+				echo $this->_queryBuilder."\n";
+				die();
+				if(parent::isVulnerable()){
+					$this->getGroupConcatLength();
+				}
 
 			}
 
@@ -58,6 +60,7 @@
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
 
 				$select	=	"@@group_concat_max_len";
+
 				$length	=	(int)$this->execute($select);
 
 				if(!$length){

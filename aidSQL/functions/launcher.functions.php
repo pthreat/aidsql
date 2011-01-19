@@ -25,7 +25,7 @@
 	function finish(aidSQL\core\Logger &$log,$totalVulnerableLinks=0){
 
 		$total	=	time() - __START;
-		$log->log("VULNERABLE LINKS FOUND\t\t: $totalVulnerableLinks",0,"white",TRUE);
+		$log->log("VULNERABLE LINKS FOUND\t: $totalVulnerableLinks",0,"white",TRUE);
 		$log->log("TOTAL TIME\t\t\t: $total seconds",0,"white",TRUE);
 
 	}
@@ -170,8 +170,8 @@
 		$log->log($banner,0,"red");
 		$banner="\n\tSQL INJECTION DETECTION TOOL\n";
 		$log->log($banner,0,"white");
-		$banner="\t\tBy Juan Stange <jpfstange@gmail.com>\n\n\n";
-		$log->log($banner,0,"white");
+		$banner="\tBy Juan Stange <jpfstange@gmail.com>\n\n\n";
+		$log->log($banner,0,"light_green");
 
 		$log->setX11Info(TRUE);
 

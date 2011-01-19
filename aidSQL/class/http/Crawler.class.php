@@ -588,7 +588,7 @@
 
 					}else{
 					
-						$this->addUrl($frmUrl,$method);
+						$this->addUrl($frmUrl,$method,FALSE);
 
 					}
 
@@ -596,7 +596,7 @@
 
 			}
 
-			public function addUrl(\aidSQL\http\Url $url=NULL,$method=NULL){
+			public function addUrl(\aidSQL\http\Url $url=NULL,$method=NULL,$validatePageType=TRUE){
 
 				$method	=	(empty($method))	?	"GET"	:	trim(strtoupper($method));
 
@@ -617,17 +617,21 @@
 
 					}
 
-					if($this->pageHasValidType($url->getPage())===FALSE){
+					if($validatePageType){
+
+						if($this->pageHasValidType($url->getPage())===FALSE){
 							
-						$this->log($url->getPage()." doesnt matches given file types",0,"yellow");
-						return FALSE;
+							$this->log($url->getPage()." doesnt matches given file types",0,"yellow");
+							return FALSE;
 
-					}else{
+						}else{
 						
-						$this->log("Page \"".$url->getPage()."\" matches required types ".implode($this->_pageTypes,","),0,"light_green");
+							$this->log("Page \"".$url->getPage()."\" matches required types ".implode($this->_pageTypes,","),0,"light_green");
 
-					}
+						}
 	
+					}
+
 				}
 
 				$urlListIndex	=	$this->wasCrawled($url,$method);
