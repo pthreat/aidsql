@@ -162,6 +162,16 @@
 
 			}
 
+			public function getRequestVariable($var=NULL){
+
+				if(isset($this->_variables[$var])){
+					return $this->_variables[$var];
+				}
+
+				return NULL;
+
+			}
+
 			function addRequestVariables(Array $array){
 
 				foreach($array as $k=>$v){

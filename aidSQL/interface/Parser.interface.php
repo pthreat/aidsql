@@ -4,9 +4,8 @@ namespace aidSQL\parser {
 
 	interface ParserInterface{
 
-		public function setContent($content);
-		public function getContent();
-		public function getResult();
+		public function setLog(\aidSQL\core\Logger &$log);
+		public function analyze($content);
 
 	}
 
