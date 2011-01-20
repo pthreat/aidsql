@@ -30,9 +30,6 @@
 			protected	$_shellCode					=	NULL;
 			protected	$_shellFileName			=	NULL;
 
-			//Post SQL Injection information
-			protected	$_affectedUrlVariable	=	array();
-
 			//A database schema object
 			protected	$_dbSchema					=	NULL;		
 
@@ -200,32 +197,36 @@
 						
 			}
 
-			protected function query(\aidSQL\core\QueryBuilder $builder,$injectionMethod=NULL){
+			protected function query(\aidSQL\core\QueryBuilder $builder,$requestVariable,$injectionMethod=NULL){
 
-				if(empty($this->_affectedUrlVariable)){
+				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
 				}
 
-				if(!is_a($this->_parser,"\\aidSQL\\core\\ParserInterface")){
+				if($this->_parser instanceof ParserInterface){
 					throw (new \Exception("Query error: Cannot execute query with no parser make sure your parser complies with the ParserInterface!"));
 				}
 
-				if(!in_array($injectionMethod,$this->_injectionMethods)){
-					throw (new \Exception("Injection method $injectionMethod was not found in this plugin!"));
+				$this->_lastQuery	=	$builder;
+
+				if(!isset($this->_queryCount[$injectionMethod])){
+
+					$count	=	$this->_queryCount[$injectionMethod]=1;
+
+				}else{
+
+					$count	=	$this->_queryCount[$injectionMethod]++;
+
 				}
 
-				$this->_lastQuery	=	$builder;
-				$count				=	$this->_queryCount[$injectionMethod]++;
-
-				$this->log("[$variable] Attempt:\t$count",0,"light_cyan");
-
 				$sql	=	$builder->getSQL();
-
-				$this->log("QUERY: $sql");
-
 				$url	=	$this->_httpAdapter->getUrl();
 
-				$url->addRequestVariable($this->_affectedUrlvariable,$builder->$sql);
+				$this->log("[$count][$requestVariable]\t| METHOD: $injectionMethod",0,"light_cyan");
+
+				$this->log("[QUERY]\t| $sql",0,"yellow");
+
+				$url->addRequestVariable($requestVariable,$sql);
 
 				$this->_httpAdapter->setUrl($url);
 
@@ -250,7 +251,7 @@
 
 				}
 
-				return $false;
+				return FALSE;
 
 			}
 

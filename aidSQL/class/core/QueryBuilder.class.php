@@ -15,6 +15,7 @@
 			private	$_commentOpen				=	"/*";
 			private	$_commentClose				=	"*/";
 			private	$_sql							=	array();
+			private	$_sqlStr						=	NULL;
 
 			//This is just an accesory method for you being able to wrap a certain value
 
@@ -33,6 +34,18 @@
 				}
 
 				return $return;
+
+			}
+
+			public function setCommentOpen($commentOpen){
+
+				$this->_commentOpen	=	$commentOpen;
+
+			}
+
+			public function setCommentClose($commentClose){
+
+				$this->_commentClose	=	$commentClose;
 
 			}
 
@@ -105,14 +118,26 @@
 
 			}
 
-			public function setFieldSpace($_space){
+			public function setSpaceCharacter($_space){
 
 				$this->_space	=	$_space;
 
 			}
 
+			public function getSpaceCharacter(){
+				return $this->_space;
+			}	
+
 			public function getSQL(){
+
 				return implode($this->_space,$this->_sql);
+
+			}
+
+			public function setSQL($sql){
+
+				$this->_sql	=	array($sql);
+
 			}
 
 			public function __toString(){
