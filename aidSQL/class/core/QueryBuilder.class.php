@@ -20,14 +20,25 @@
 
 			public function wrap($wrapping,$value){
 
-				return preg_replace("/%value%/",$wrapping,$value);
+				return preg_replace("/%value%/",$value,$wrapping);
+
+			}
+
+			public function wrapArray(Array $wrapMe,$wrapping){
+
+				$return	=	array();
+
+				foreach($wrapMe as $key=>$wrapIt){
+					$return[]	=	$this->wrap($wrapping,$wrapIt);
+				}
+
+				return $return;
 
 			}
 
 			public function select(Array $fields,Array $where=array()){
 
-				$sql	=	"SELECT".$this->_space.implode($this->_fieldDelimiter,$fields);
-				return $sql;
+				$this->_sql[]	=	"SELECT".$this->_space.implode($this->_fieldDelimiter,$fields);
 
 			}
 
@@ -61,14 +72,17 @@
 
 			public function union(Array $selectFields,$unionType=""){
 
-				if(!empty($unionType)){
 
-					$unionType	.=	$this->_space;
+				$union			=	"UNION";
+
+				if($unionType){
+
+					$union.=$this->_space.$unionType;
 
 				}
 
-				$union			=	"UNION".$this->_space.$unionType;
 				$this->_sql[]	=	$union;
+
 				$this->select($selectFields);
 
 			}
@@ -101,7 +115,7 @@
 				return implode($this->_space,$this->_sql);
 			}
 
-			public function toString(){
+			public function __toString(){
 
 				return $this->getSQL();
 
