@@ -111,12 +111,6 @@
 
 			}
 
-			public function setLimit(Array $limit){
-
-				$this->_sql[]	=	$limit;
-
-			}
-
 			public function setSpaceCharacter($_space){
 
 				$this->_space	=	$_space;

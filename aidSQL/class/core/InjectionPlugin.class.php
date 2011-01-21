@@ -211,13 +211,11 @@
 
 				if(!isset($this->_queryCount[$injectionMethod])){
 
-					$count	=	$this->_queryCount[$injectionMethod]=1;
-
-				}else{
-
-					$count	=	$this->_queryCount[$injectionMethod]++;
+					$count	=	$this->_queryCount[$injectionMethod]=0;
 
 				}
+
+				$count	=	++$this->_queryCount[$injectionMethod];
 
 				$sql	=	$builder->getSQL();
 				$url	=	$this->_httpAdapter->getUrl();
