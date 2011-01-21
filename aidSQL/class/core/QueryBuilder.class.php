@@ -7,8 +7,7 @@
 	namespace aidSQL\core{
 
 		class QueryBuilder{
-	
-			private	$_fieldWrapper				=	"CONCAT(0x7c,%value%,0x7c)";
+
 			private	$_fieldDelimiter			=	',';
 			private	$_fieldEqualityChar		=	'=';
 			private	$_space						=	" ";	//This could be aswell /**/ for evading ids's
@@ -102,7 +101,7 @@
 
 			public function limit(Array $limit){
 
-				return "LIMIT".$this->_space.implode($limit,',');
+				$this->_sql[]	=	"LIMIT".$this->_space.implode($limit,',');
 
 			}
 
