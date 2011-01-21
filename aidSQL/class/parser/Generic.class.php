@@ -8,12 +8,25 @@
 			private	$_closeTag	=	"";
 			private	$_logger		=	NULL;
 
-			public function setOpenTag($openTag){
-				$this->_openTag	=	(string)$openTag;
+			public function setOpenTag($openTag,$hexEncode=FALSE){
+
+				if($hexEncode){
+					$this->_openTag	=	\String::hexEncode($openTag);
+				}else{
+					$this->_openTag	=	$openTag;
+				}
+
 			}
 
-			public function setCloseTag($closeTag){
-				$this->_closeTag	=	(string)$closeTag;
+			public function setCloseTag($closeTag,$hexEncode=FALSE){
+
+				if($hexEncode){
+					$this->_closeTag	=	\String::hexEncode($closeTag);
+				}else{
+					$this->_closeTag	=	$closeTag;
+				}
+
+
 			}
 
 			public function setLog(\aidSQL\core\Logger &$log){
@@ -38,7 +51,6 @@
 				$this->log("String identifier is: ".$this->_openTag." - ".$this->_closeTag,0,"white");
 
 				$regex	= '/'.$this->_openTag."+.*".$this->_closeTag.'/';
-
 				$matches = NULL;
 
 				preg_match_all($regex,$content,$matches,PREG_SET_ORDER);

