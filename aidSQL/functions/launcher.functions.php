@@ -177,26 +177,32 @@
 
 	}
 
-	function isVulnerable(&$cmdParser,&$httpAdapter,&$crawler,&$log,&$pLoader){
+	function isVulnerableToSQLInjection(&$cmdParser,&$httpAdapter,&$crawler,&$log,&$pLoader){
 
-		$aidSQL		=	new \aidSQL\core\Runner($cmdParser,$httpAdapter,$crawler,$log,$pLoader);
-		$result		=	FALSE;
+		$aidSQL	=	new \aidSQL\core\Runner($cmdParser,$httpAdapter,$crawler,$log,$pLoader);
+		$plugin	=	$aidSQL->isVulnerableToSQLInjection();
 
-		if($aidSQL->isVulnerable()){
-
-			$log->log("Site is vulnerable to sql injection!",0,"light_cyan");
-
-			if(!$aidSQL->generateReport()){
-
-				$log->log("Site seems to be vulnerable, however we failed to gather necessary data to make the injection report!",1,"red");
-
-			}
-
-			$result	=	TRUE;
-
+		if($plugin==FALSE){
+			return FALSE;
 		}
 
-		return $result;
+		$log->log("Site is vulnerable to sql injection!",0,"light_cyan");
+
+		$log->log("PLUGIN\t\t:".$plugin->getPluginName(),0,"light_cyan");
+		$log->log("AUTHOR\t\t:".$plugin->getPluginAuthor(),0,"light_cyan");
+
+		var_dump($plugin->getAllSchemas());
+		die();
+		return FALSE;
+
+	}
+
+	function generateReport(Array $schemas){
+
+		foreach($schemas as $schema){
+			var_dump($schema);
+			die();
+		}
 
 	}
 

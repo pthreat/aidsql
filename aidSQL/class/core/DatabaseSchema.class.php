@@ -41,6 +41,10 @@
 				$this->_dbVersion	=	$dbVersion;	
 			}
 
+			public function getDbVersion(){
+				return $this->_dbVersion;
+			}
+
 			public function setDbDataDir($dataDir){
 
 				$this->_dbDataDir	=	$dataDir;

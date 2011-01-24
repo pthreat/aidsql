@@ -93,12 +93,7 @@
 
 			}
 
-
-			public function isVulnerable(){
-
-				if($this->_vulnerable){
-					return TRUE;
-				}
+			public function isVulnerableToSQLInjection(){
 
 				$plugins	=	$this->_pLoader->getPlugins();
 
@@ -122,18 +117,11 @@
 
 						if($plugin->isVulnerable()){
 
-							$this->_plugin			= $plugin;
-							$this->_vulnerable	= TRUE;
-
-							if(!$this->_options["verbose"]){
-								echo "\n";
-							}
-
-							return TRUE;
+							return $plugin;
 
 						}
 
-						unset($this->_plugin);
+						unset($plugin);
 
 						$this->log("Not vulnerable to this plugin ...");
 
@@ -144,6 +132,7 @@
 
 					}
 
+					return FALSE;
 
 				}
 

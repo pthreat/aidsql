@@ -36,6 +36,14 @@
 
 			}
 
+			public function group(Array $group){
+				$this->_sql[] = "GROUP".$this->_space."BY".$this->_space.implode(',',$group);
+			}
+
+			public function reset(){
+				$this->_sql	=	array();	
+			}
+
 			public function setCommentOpen($commentOpen){
 
 				$this->_commentOpen	=	$commentOpen;
@@ -62,13 +70,13 @@
 
 			public function from($table){
 
-				$this->_sql[]	=	"FROM".$this->_space($table);
+				$this->_sql[]	=	"FROM".$this->_space.$table;
 
 			}
 
 			public function where(Array $conditions){
 
-				$this->_sql[]="WHERE".implode($this->_space,$conditions);
+				$this->_sql[]="WHERE".$this->_space.implode($this->_space,$conditions);
 
 			}
 
@@ -83,7 +91,6 @@
 			}
 
 			public function union(Array $selectFields,$unionType=""){
-
 
 				$union			=	"UNION";
 

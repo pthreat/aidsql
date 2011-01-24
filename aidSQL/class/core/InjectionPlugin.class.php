@@ -15,6 +15,7 @@
 			//preference.
 
 			protected 	$_parser						=	NULL;
+			protected	$_queryBuilder				=	NULL;
 			protected	$_config						=	NULL;
 			protected	$_injectionMethodString	=	"injection";
 			protected	$_injectionMethods		=	array();
@@ -31,7 +32,7 @@
 			protected	$_shellFileName			=	NULL;
 
 			//A database schema object
-			protected	$_dbSchema					=	NULL;		
+			private		$_schemas					=	array();
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
 
@@ -40,6 +41,8 @@
 				if(!sizeof($this->_injectionMethods)){
 					throw (new \Exception("No injection methods were found in this plugin!"));
 				}
+
+				$this->_queryBuilder	=	new \aidSQL\core\QueryBuilder();
 
 				$url						=	$adapter->getUrl();
 				$requestVariables		=	$url->getQueryAsArray();
@@ -52,7 +55,7 @@
 
 				$this->setConfig($config);
 
-				$keys						=	array_keys($config);
+				$keys = array_keys($config);
 				
 				if(in_array("numeric-only",$keys)){
 
@@ -74,23 +77,56 @@
 					$this->setLog($log);
 				}
 
+			}
+
+			public function getPluginAuthor(){
+
+         	$constant   =  "static::PLUGIN_AUTHOR";
+
+				if(defined($constant)){
+
+					return constant($constant);
+
+				}
+
+				return "UNKNOWN";
+
+			}
+
+			public function getPluginName(){
+
+         	$constant   =  "static::PLUGIN_NAME";
+
+				if(defined($constant)){
+
+					return constant($constant);
+
+				}
+
+				return "UNKNOWN";
+
+			}
+
+			protected function addSchema(\aidSQL\core\DatabaseSchema $dbSchema){
+
+				$this->_schemas[]	=	$dbSchema;
 
 			}
 
 			public function isVulnerable(){
 
 				foreach($this->_injectionMethods as $injectionMethod){
-					$this->$injectionMethod();
+
+					$results	=	$this->$injectionMethod();
+	
+					if($results){
+
+						return TRUE;
+
+					}
+
 				}
 
-			}
-
-			public function setAffectedURLVariable($var){
-				$this->_affectedUrlVariable	=	$var;
-			}
-
-			public function getAffectedURLVariable(){
-				return $this->_affectedUrlVariable;
 			}
 
 			public function setShellCode($shellCode=NULL){
@@ -197,7 +233,7 @@
 						
 			}
 
-			protected function query(\aidSQL\core\QueryBuilder $builder,$requestVariable,$injectionMethod=NULL){
+			protected function query($requestVariable,$injectionMethod=NULL){
 
 				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
@@ -207,7 +243,6 @@
 					throw (new \Exception("Query error: Cannot execute query with no parser make sure your parser complies with the ParserInterface!"));
 				}
 
-				$this->_lastQuery	=	$builder;
 
 				if(!isset($this->_queryCount[$injectionMethod])){
 
@@ -215,13 +250,14 @@
 
 				}
 
-				$count	=	++$this->_queryCount[$injectionMethod];
+				$count				=	++$this->_queryCount[$injectionMethod];
+				$url					=	$this->_httpAdapter->getUrl();
+				$sql					=	$this->_queryBuilder->getSQL();
 
-				$sql	=	$builder->getSQL();
-				$url	=	$this->_httpAdapter->getUrl();
+				$this->_lastQuery	=	clone($this->_queryBuilder);		//Save last query
+				$this->_queryBuilder->reset();								//Take away previous SQL
 
 				$this->log("[$count][$requestVariable]\t| METHOD: $injectionMethod",0,"light_cyan");
-
 				$this->log("[QUERY]\t| $sql",0,"yellow");
 
 				$url->addRequestVariable($requestVariable,$sql);
@@ -271,9 +307,11 @@
 
 			}
 
-			public function getSchema(){
+			public function getAllSchemas(){
 
-				return $this->_dbSchema;
+				$this->getSchemas();
+
+				return $this->_schemas;
 
 			}
 

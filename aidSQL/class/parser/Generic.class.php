@@ -61,6 +61,10 @@
 
 					foreach($matches as $key=>$match){
 
+						if(empty($match)){
+							continue;
+						}
+
 						$match=$match[0];
 						$match = preg_replace("/^({$this->_openTag})/",'',$match);
 						$match = preg_replace("/({$this->_closeTag})/",'',$match);
