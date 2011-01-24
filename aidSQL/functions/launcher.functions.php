@@ -177,10 +177,38 @@
 
 	}
 
+	function createLogDirectory(\aidSQL\parser\CmdLineParser &$parser,\aidSQL\http\Url &$url,\aidSQL\core &$log){
+		
+		$options	=	$parser->getParsedOptions();
+
+		if(!is_dir($options["log-path"])){
+
+			if(!mkdir($options["log-path"])){
+
+				$log->log("COULDNT CREATE LOGS DIRECTORY! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
+				return FALSE;
+
+			}
+
+			$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$url->getHost();
+
+			if(!is_dir($logDir)){
+				if(!mkdir($logDir)){
+					$log->log("COULDNT CREATE LOG DIRECTORY! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
+				}
+			}
+
+			return $logDir;
+
+		}	
+
+	}
+
 	function isVulnerableToSQLInjection(&$cmdParser,&$httpAdapter,&$crawler,&$log,&$pLoader){
 
 		$aidSQL	=	new \aidSQL\core\Runner($cmdParser,$httpAdapter,$crawler,$log,$pLoader);
 		$plugin	=	$aidSQL->isVulnerableToSQLInjection();
+		$options	=	$cmdParser->getParsedOptions();
 
 		if($plugin==FALSE){
 			return FALSE;
@@ -191,8 +219,37 @@
 		$log->log("PLUGIN\t\t:".$plugin->getPluginName(),0,"light_cyan");
 		$log->log("AUTHOR\t\t:".$plugin->getPluginAuthor(),0,"light_cyan");
 
-		var_dump($plugin->getAllSchemas());
-		die();
+		if($options["schema"]!=="none"){
+
+			$schemas	=	$plugin->getAllSchemas();
+
+			foreach($schemas as $schema){
+
+				if(isset($options["save-xml"])){
+
+					if(empty($options["save-xml"])){
+
+						$options["save-xml"]	=	'./aidsql-logs';
+
+					}
+
+					file_put_contents($options["save-xml"],$schema->getXML());
+
+				}
+
+				if(isset($options["save-html"])){
+
+					if(empty($options["save-html"])){
+						$options["save-html"]	=	'.';
+					}
+
+				}
+
+
+			}
+
+		}
+
 		return FALSE;
 
 	}

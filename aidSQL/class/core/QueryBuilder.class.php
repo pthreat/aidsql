@@ -56,7 +56,7 @@
 
 			}
 
-			public function select(Array $fields,Array $where=array()){
+			public function select(Array $fields){
 
 				$this->_sql[]	=	"SELECT".$this->_space.implode($this->_fieldDelimiter,$fields);
 

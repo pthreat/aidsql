@@ -17,6 +17,16 @@
 
 			}
 
+			public function getTables(){
+
+				if(sizeof($this->_tables)){
+					return array_keys($this->_tables);
+				}
+
+				return FALSE;
+
+			}
+
 			public function getSchema(){
 				return $this->_tables;
 			}
@@ -48,6 +58,41 @@
 			public function setDbDataDir($dataDir){
 
 				$this->_dbDataDir	=	$dataDir;
+
+			}
+
+			public function getXML(){
+
+            $dom		=	new DOMDocument('1.0','utf-8');
+            $db		=	$dom->createElement("database");
+
+				$db->appendChild($dom->createElement("name",$this->_dbName));
+				$db->appendChild($dom->createElement("version",$this->_dbVersion));
+				$db->appendChild($dom->createElement("datadir",$this->_dbDataDir));
+
+				$tables	=	$dom->createElement("tables");
+
+				foreach($this->_tables as $tName=>$columns){
+
+					$table	=	$dom->createElement("table");
+					$table->appendChild($dom->createElement("name",$tName));
+
+					$domCols	=	$dom->createElement("columns");
+
+					foreach($columns as $column){
+						$domCols->appendChild($dom->createElement("name",$column));
+					}
+					
+					$table->appendChild($domCols);
+
+					$tables->appendChild($table);
+
+				}
+
+				$db->appendChild($tables);
+				$dom->appendChild($db);
+
+           	return $dom->getXML(); 
 
 			}
 

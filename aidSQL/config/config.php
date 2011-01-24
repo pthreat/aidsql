@@ -129,11 +129,17 @@
 				0
 			)
 		),
+		"log-path"=>array(
+		),
 		"log-save"=>array(
 		),
 		"log-all"=>array(
 			"novalue" => TRUE,
 			"requires"=> array("log-save")
+		),
+		"save-html"=>array(
+		),
+		"save-xml"=>array(
 		),
 		"plugin-phpinfo"=>array(
 		),
@@ -167,12 +173,6 @@
 		"no-shell"=>array(
 			"novalue"=>TRUE
 		),
-		"no-schema"=>array(
-			"novalue"=>TRUE
-		),
-		"partial-schema"=>array(
-			"novalue"=>TRUE
-		),
 		"decode-requests"=>array(
 			"values"=>array(
 				1,
@@ -195,7 +195,18 @@
 		"shell-code"=>array(
 		),
 		"shell-name"=>array(
+		),
+		"schema"=>array(
+			"values"=>array(
+				"complete",
+				"partial",
+				"none"
+			)
+		),
+		"wanted-schemas"=>array(
+			"required"=>TRUE
+		),
+		"ommit-schemas"=>array(
 		)
-	
 	);
 ?>
