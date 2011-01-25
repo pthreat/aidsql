@@ -39,8 +39,16 @@
 				$this->_dbUser	=	$dbUser;
 			}
 
+			public function getDbUser($dbUser){
+				return $this->_dbUser;
+			}
+
 			public function setDbName($dbName){
 				$this->_dbName	=	$dbName;
+			}
+
+			public function getDbName(){
+				return $this->_dbName;
 			}
 
 			public function setDbPassword($dbPassword){
@@ -59,6 +67,10 @@
 
 				$this->_dbDataDir	=	$dataDir;
 
+			}
+
+			public function getDbDataDir(){
+				return $this->_dbDataDir;
 			}
 
 			public function getXML(){

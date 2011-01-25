@@ -177,10 +177,8 @@
 
 	}
 
-	function createLogDirectory(\aidSQL\parser\CmdLineParser &$parser,\aidSQL\http\Url &$url,\aidSQL\core &$log){
+	function createLogDirectory(Array $options,$domain=NULL,\aidSQL\core\Logger &$log,$logType=NULL){
 		
-		$options	=	$parser->getParsedOptions();
-
 		if(!is_dir($options["log-path"])){
 
 			if(!mkdir($options["log-path"])){
@@ -190,13 +188,25 @@
 
 			}
 
-			$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$url->getHost();
+			if(!is_null($logType)){
+
+				$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$domain;
+
+			}else{
+
+				$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$url->getHost();
+
+			}
 
 			if(!is_dir($logDir)){
+
 				if(!mkdir($logDir)){
 					$log->log("COULDNT CREATE LOG DIRECTORY! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
+					return FALSE;
 				}
+
 			}
+
 
 			return $logDir;
 
@@ -209,6 +219,8 @@
 		$aidSQL	=	new \aidSQL\core\Runner($cmdParser,$httpAdapter,$crawler,$log,$pLoader);
 		$plugin	=	$aidSQL->isVulnerableToSQLInjection();
 		$options	=	$cmdParser->getParsedOptions();
+
+		$url		=	$httpAdapter->getUrl();
 
 		if($plugin==FALSE){
 			return FALSE;
@@ -225,15 +237,13 @@
 
 			foreach($schemas as $schema){
 
-				if(isset($options["save-xml"])){
+				if(in_array("save-xml",array_keys($options))){
 
-					if(empty($options["save-xml"])){
+					if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
 
-						$options["save-xml"]	=	'./aidsql-logs';
+						file_put_contents($logDirectory.DIRECTORY_SEPARATOR.$schema->getDbName().".xml",$schema->getXML());
 
 					}
-
-					file_put_contents($options["save-xml"],$schema->getXML());
 
 				}
 
@@ -250,7 +260,7 @@
 
 		}
 
-		return FALSE;
+		return TRUE;
 
 	}
 
