@@ -4,35 +4,37 @@
 
 		abstract class InjectionPlugin implements InjectionPluginInterface {
 
-			//General Stuff
-
 			protected	$_logger						=	NULL;
 			protected 	$_httpAdapter				=	NULL;
 			protected	$_verbose					=	FALSE;
+			private	 	$_parser						=	NULL;				//This is the parser youll set in your child class 
+																					//to analyze query results.
 
-			//This is a plugin that knows howto check if the injection has succeded
-			//The whole point is to the children classes to set the parser of their
-			//preference.
-
-			protected 	$_parser						=	NULL;
-			protected	$_queryBuilder				=	NULL;
-			protected	$_config						=	NULL;
-			protected	$_injectionMethodString	=	"injection";
-			protected	$_injectionMethods		=	array();
-			protected	$_queryCount				=	array("someInjectionMethod"=>0);
-			protected	$_lastQuery					=	NULL;
-			protected	$_queryResult				=	NULL;
+			protected	$_queryBuilder				=	NULL;				//Query building object
+			protected	$_config						=	NULL;				//Configuration parameters
+			private		$_injectionMethodString	=	"injection";	//String that indicates the prefix of injection methods
+			private		$_injectionMethods		=	array();			//Contains all injection methods
+			private		$_queryCount				=	array(
+																		"someInjectionMethod"=>0	//Query count per injection method
+																);	
+			private		$_totalQueries				=	0;					//Total amount of queries
+			private		$_lastQuery					=	NULL;				//Contains the last executed query
+			private		$_queryResult				=	NULL;				//Contains the lastQuery Result
+																
 
 			//Injection related stuff
 
 			protected 	$_injectionAttempts		=	40;
+			private		$_lastInjectionMethod	=	NULL;				//Contains the last called injection method
+			private		$_affectedVariable		=	array();			//Affected URL Variable, plus, the working injection
+			protected	$_payload					=	NULL;				//This is just purely informational for now and contains
+																					//The given escape sequence that was used on the field
+																					//to inject for instance ',%') etc
 
 			//Shell related stuff
 			protected	$_shellCode					=	NULL;
 			protected	$_shellFileName			=	NULL;
-
-			//A database schema object
-			private		$_schemas					=	array();
+			private		$_schemas					=	array();	//An array containing DatabaseSchemas
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
 
@@ -79,6 +81,10 @@
 
 			}
 
+			public function getAffectedVariable(){
+				return $this->_affectedVariable;
+			}
+
 			public function getPluginAuthor(){
 
          	$constant   =  "static::PLUGIN_AUTHOR";
@@ -117,6 +123,8 @@
 
 				foreach($this->_injectionMethods as $injectionMethod){
 
+					$this->_lastInjectionMethod	=	$injectionMethod;
+
 					$results	=	$this->$injectionMethod();
 	
 					if($results){
@@ -127,6 +135,14 @@
 
 				}
 
+			}
+
+			public function getLastInjectionMethod(){
+				return $this->_lastInjectionMethod;
+			}
+
+			public function getTotalQueryCount(){
+				return $this->_queryCount;
 			}
 
 			public function setShellCode($shellCode=NULL){
@@ -189,7 +205,7 @@
 				$this->_logger = $log;
 			}
 
-			public function log($msg = NULL,$color="white",$type="0",$toFile=FALSE){
+			protected function log($msg = NULL,$color="white",$type="0",$toFile=FALSE){
 
 				if(!(isset($this->_config["all"]["verbose"])&&(bool)$this->_config["all"]["verbose"])){
 					echo ".";
@@ -268,6 +284,7 @@
 
 					$content					=	$this->_httpAdapter->fetch();
 					$this->_queryResult	=	$content;
+					$this->_totalQueries++;
 
 					if($this->_verbose){
 						$this->log($content);
@@ -276,6 +293,18 @@
 					$result	=	$this->_parser->analyze($content);
 
 					if($result){
+
+						if(!sizeof($this->_affectedVariable)){
+
+							$this->_affectedVariable = array (
+																			"variable"	=>	$requestVariable,
+																			"injection"	=>	$this->_lastQuery,
+																			"method"		=>	$this->_injectionMethodString.$injectionMethod,
+																			"payload"	=>	$this->_payload
+							);
+
+						}
+
 						return $result;
 					}
 
@@ -297,27 +326,12 @@
 				return $this->_httpAdapter;
 			}
 
-			public function setTable($table=NULL){
-
-				if(empty($table)){
-					throw (new Exception("The table name cant be empty!"));
-				}
-
-				$this->_table = $table;
-
-			}
-
 			public function getAllSchemas(){
 
 				$this->getSchemas();
-
 				return $this->_schemas;
 
 			}
-
-			/**
-			*This for now, only stands for outputting the results from URL execution to stdout
-			*/
 
 			public function setVerbose($boolean=TRUE){
 				$this->_verbose = $boolean;
@@ -363,24 +377,6 @@
 					default:
 						return array_merge($numVariables,$strVariables);
 						break;
-
-				}
-
-			}
-
-			private function orderRequestVariables(){
-
-
-				if(in_array("numeric-only",$keys)){
-
-
-				}elseif(in_array("strings-only",$keys)){
-
-					$strings	=	$vars["strings"];
-
-				}else{
-
-					return $requestVariables;
 
 				}
 

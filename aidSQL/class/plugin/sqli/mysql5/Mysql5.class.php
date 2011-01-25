@@ -47,14 +47,14 @@
 					"ending-payloads"	=>	array(
 						"comment"=>explode('_',$this->_config["comment-payloads"]),
 						"order"=>array(
-							array("by"=>"1","sort"=>"DESC"),
-							array("by"=>"1","sort"=>"ASC"),
+//							array("by"=>"1","sort"=>"DESC"),
+//							array("by"=>"1","sort"=>"ASC"),
 							array()
 						),
 						"limit"=>array(
-							array(),
-							array("0","1"),
-							array("1","1"),
+							array()
+	//						array("0","1"),
+	//						array("1","1"),
 						)
 					)
 				);
@@ -178,6 +178,8 @@
 																				"comment"			=>	$comment,		//constant
 																				"callback"			=>	$callback
 											);
+
+											$this->_payload	=	$payLoad;
 
 											return TRUE;
 
@@ -401,17 +403,16 @@
 
 					if($this->_config["all"]["schema"] == "complete"){
 
-						$tables	=	$dbSchema->getTables();
+						$tables	=	array_keys($dbSchema->getTables());
 
 						if(sizeof($tables)){
 
 							foreach($tables as $table){
 
 								$columns	=	$this->getColumns($table,$database);
+								$dbSchema->addTable($table,$columns);
 
 							}
-
-							$dbSchema->addTable($table,$columns);
 
 						}
 
@@ -491,6 +492,7 @@
 				if($this->detectTruncatedData($columns)){
 
 					$columns = $this->unionQueryIterateLimit($select,$from,$where);
+					return array($columns[0]);
 
 				}else{
 

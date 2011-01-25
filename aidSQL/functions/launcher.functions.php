@@ -178,41 +178,130 @@
 	}
 
 	function createLogDirectory(Array $options,$domain=NULL,\aidSQL\core\Logger &$log,$logType=NULL){
-		
+
 		if(!is_dir($options["log-path"])){
 
-			if(!mkdir($options["log-path"])){
+			if(!@mkdir($options["log-path"],0700,TRUE)){
 
-				$log->log("COULDNT CREATE LOGS DIRECTORY! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
+				$log->log("COULDNT CREATE LOGS DIRECTORY ".$options["log-path"]."! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
 				return FALSE;
 
 			}
 
-			if(!is_null($logType)){
+		}
 
-				$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$domain;
+		if(!is_null($logType)){
 
-			}else{
+			$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$domain.DIRECTORY_SEPARATOR.$logType;
 
-				$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$url->getHost();
+		}else{
 
+			$logDir	=	$options["log-path"].DIRECTORY_SEPARATOR.$url->getHost();
+
+		}
+
+		if(!is_dir($logDir)){
+
+			if(!@mkdir($logDir,0700,TRUE)){
+				$log->log("COULDNT CREATE LOG DIRECTORY $logDir! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
+				return FALSE;
 			}
 
-			if(!is_dir($logDir)){
+		}
 
-				if(!mkdir($logDir)){
-					$log->log("COULDNT CREATE LOG DIRECTORY! CHECK THAT YOU HAVE PERMISSION TO DO SO!",1,"red");
-					return FALSE;
-				}
-
-			}
-
-
-			return $logDir;
-
-		}	
+		return $logDir;
 
 	}
+
+	function makeXML(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas){
+
+		$dom			=	new \DomDocument('1.0','utf-8');
+		$main			=	$dom->createElement("aidSQL");
+
+		$url			=	$plugin->getHttpAdapter()->getUrl();
+		$affected	=	$plugin->getAffectedVariable();
+
+		$domain		=	$dom->createElement("host",$url->getHost());
+		$date			=	$dom->createElement("date",date("Y-m-d H:i:s"));
+
+		$main->appendChild($domain);
+		$main->appendChild($date);
+
+		$injection	=	$dom->createElement("sqli-details");
+
+		$injection->appendChild($dom->createElement("vulnlink",$url->getUrlAsString(FALSE)));
+
+		$requestVariables	=	$url->getQueryAsArray();
+
+		$params				=	$dom->createElement("parameters");
+		$injection->appendChild($dom->createElement("injection",sprintf("%s",$affected["injection"])));
+
+		foreach($requestVariables as $var=>$value){
+
+			$params->appendChild($dom->createElement("param",$var));
+			$vulnerable	=	($var == $affected["variable"])	?	1	:	0;
+			$params->appendChild($dom->createElement("vulnerable",$vulnerable));
+
+		}
+
+		$injection->appendChild($params);
+
+		$pluginDom		=	$dom->createElement("plugin-details");
+		
+		$pluginDom->appendChild($dom->createElement("plugin",$plugin->getPluginName()));
+		$pluginDom->appendChild($dom->createElement("author",$plugin->getPluginAuthor()));
+		$pluginDom->appendChild($dom->createElement("method",$affected["method"]));
+
+		$injection->appendChild($pluginDom);
+
+		$main->appendChild($injection);
+
+		$domSchemas	=	$dom->createElement("schemas");
+
+		foreach($schemas as $schema){
+
+			$db		=	$dom->createElement("database");
+
+			$db->appendChild($dom->createElement("name",$schema->getDbName()));
+			$db->appendChild($dom->createElement("version",$schema->getDBVersion()));
+			$db->appendChild($dom->createElement("datadir",$schema->getDbDataDir()));
+
+			$tables			=	$dom->createElement("tables");
+			$schemaTables	=	$schema->getTables();
+
+			foreach($schemaTables as $tName=>$columns){
+
+				$table	=	$dom->createElement("table");
+				$table->appendChild($dom->createElement("name",$tName));
+
+				if(sizeof($columns)){
+
+					$domCols	=	$dom->createElement("columns");
+
+					foreach($columns as $column){
+						$domCols->appendChild($dom->createElement("name",$column));
+					}
+
+					$table->appendChild($domCols);
+
+				}
+
+				$tables->appendChild($table);
+
+			}
+
+			$db->appendChild($tables);
+			$domSchemas->appendChild($db);
+
+		}
+
+		$main->appendChild($domSchemas);
+		$dom->appendChild($main);
+
+  		return $dom->saveXML(); 
+
+	}
+
 
 	function isVulnerableToSQLInjection(&$cmdParser,&$httpAdapter,&$crawler,&$log,&$pLoader){
 
@@ -235,26 +324,22 @@
 
 			$schemas	=	$plugin->getAllSchemas();
 
-			foreach($schemas as $schema){
+			if(in_array("save-xml",array_keys($options))){
 
-				if(in_array("save-xml",array_keys($options))){
+				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
 
-					if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
-
-						file_put_contents($logDirectory.DIRECTORY_SEPARATOR.$schema->getDbName().".xml",$schema->getXML());
-
-					}
+					$xml	=	makeXML($plugin,$schemas);
+					file_put_contents($logDirectory.DIRECTORY_SEPARATOR."db-schemas.xml",$xml);
 
 				}
 
-				if(isset($options["save-html"])){
+			}
 
-					if(empty($options["save-html"])){
-						$options["save-html"]	=	'.';
-					}
+			if(isset($options["save-html"])){
 
+				if(empty($options["save-html"])){
+					$options["save-html"]	=	'.';
 				}
-
 
 			}
 

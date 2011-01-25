@@ -6,9 +6,6 @@
 
 			public function getPluginAuthor();
 			public function getPluginName();
-			public function setLog(\aidSQL\core\Logger &$log);	//Log setter
-			public function log($msg=NULL);							//Log wrapper
-			public function setTable();
 			public function getSchemas();								//Has to return a DatabaseSchema Object
 			public function getColumns($table=NULL);				//Separated from the original getSchema due to the --partial-schema opt
 			public function getUser();
