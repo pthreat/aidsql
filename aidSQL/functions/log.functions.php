@@ -61,17 +61,36 @@
 			foreach($schemaTables as $tName=>$columns){
 
 				$table	=	$dom->createElement("table");
-				$table->appendChild($dom->createElement("name",$tName));
+				$table->setAttribute("name",$tName);
 
 				if(sizeof($columns)){
 
-					$domCols	=	$dom->createElement("columns");
+					foreach($columns as $value){
 
-					foreach($columns as $column){
-						$domCols->appendChild($dom->createElement("name",$column));
+						$domCol	=	$dom->createElement("column");
+
+						foreach($value as $nodeName=>$nodeValue){
+
+							if(is_array($nodeValue)){
+
+								$tmpNode	=	$dom->createElement($nodeName);
+
+								foreach($nodeValue as $value){
+									$tmpNode->appendChild($dom->createElement($value,1));
+								}	
+								
+							}else{
+								$tmpNode	=	$dom->createElement($nodeName,$nodeValue);
+							}
+
+							$domCol->appendChild($tmpNode);
+
+						}
+
+						$table->appendChild($domCol);
+
 					}
 
-					$table->appendChild($domCols);
 
 				}
 

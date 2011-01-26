@@ -11,7 +11,24 @@
 			private	$_dbDataDir		=	NULL;
 			private	$_tables			=	array();
 
-			public function addTable($table,Array $fields){
+			public function addTable($table,Array $fields=array()){
+
+				if(sizeof($fields)){
+
+					foreach($fields as $field){
+						
+						if(!isset($field["name"])){
+
+							$msg	=	"When calling ".__FUNCTION__." make sure the fields array has at least the key \"name\"";
+										"Ideally type, charset, collation and privilege are suggested";
+
+							throw new \Exception($msg);
+
+						}
+
+					}
+
+				}
 
 				$this->_tables[$table]	=	$fields;
 
