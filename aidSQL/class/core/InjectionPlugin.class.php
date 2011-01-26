@@ -44,8 +44,6 @@
 					throw (new \Exception("No injection methods were found in this plugin!"));
 				}
 
-				$this->_queryBuilder	=	new \aidSQL\core\QueryBuilder();
-
 				$url						=	$adapter->getUrl();
 				$requestVariables		=	$url->getQueryAsArray();
 
@@ -79,6 +77,10 @@
 					$this->setLog($log);
 				}
 
+			}
+
+			protected function setQueryBuilder(\aidSQL\db\QueryBuilderInterface &$queryBuilder){
+				$this->_queryBuilder	=	$queryBuilder;
 			}
 
 			public function getAffectedVariable(){
@@ -253,6 +255,10 @@
 
 				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
+				}
+
+				if(!($this->_queryBuilder instanceof \aidSQL\db\QueryBuilderInterface)){
+					throw (new \Exception("Query error: You must set a query builder in order to perform a query"));
 				}
 
 				if($this->_parser instanceof ParserInterface){

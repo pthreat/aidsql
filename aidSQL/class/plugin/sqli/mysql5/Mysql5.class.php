@@ -19,6 +19,9 @@
 
 			public function injectionUnionWithConcat(){
 
+				$queryBuilder	=	new \aidSQL\db\MySQLQueryBuilder();
+				$this->setQueryBuilder($queryBuilder);
+
 				$parser	=	new \aidSQL\parser\Generic();
 
 				$openTag				=	"{!";
@@ -71,6 +74,23 @@
 
 			}
 
+			private function wrap($wrapping,$value){
+
+				return preg_replace("/%value%/",$value,$wrapping);
+
+			}
+
+			private function wrapArray(Array $wrapMe,$wrapping){
+
+				$return	=	array();
+
+				foreach($wrapMe as $key=>$wrapIt){
+					$return[]	=	$this->wrap($wrapping,$wrapIt);
+				}
+
+				return $return;
+
+			}
 
 			private function checkUnionInjectionParameters(Array &$sqliParams){
 
@@ -133,7 +153,7 @@
 									foreach($sqliParams["ending-payloads"]["limit"] as $limit){
 
 										if(!empty($wrapping)){
-											$values	=	$this->_queryBuilder->wrapArray($iterationContainer,$wrapping);
+											$values	=	$this->wrapArray($iterationContainer,$wrapping);
 										}else{
 											$values	=	$iterationContainer;
 										}
@@ -213,7 +233,7 @@
 					$val	=	$value;	
 				}
 
-				$params["fieldValues"]	=	$this->_queryBuilder->wrapArray($params["fieldValues"],$params["wrapping"]);
+				$params["fieldValues"]	=	$this->wrapArray($params["fieldValues"],$params["wrapping"]);
 
 				$this->_queryBuilder->union($params["fieldValues"],"ALL");
 

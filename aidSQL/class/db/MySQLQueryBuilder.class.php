@@ -1,12 +1,12 @@
 <?php
 
 	/**
-	*Query Builder class, this class is used to build SQL queries
+	*MySQL query Builder class, this class is used to build SQL queries
 	*/
 
-	namespace aidSQL\core{
+	namespace aidSQL\db{
 
-		class QueryBuilder{
+		class MySQLQueryBuilder implements QueryBuilderInterface{
 
 			private	$_fieldDelimiter			=	',';
 			private	$_fieldEqualityChar		=	'=';
@@ -18,26 +18,12 @@
 
 			//This is just an accesory method for you being able to wrap a certain value
 
-			public function wrap($wrapping,$value){
-
-				return preg_replace("/%value%/",$value,$wrapping);
-
-			}
-
-			public function wrapArray(Array $wrapMe,$wrapping){
-
-				$return	=	array();
-
-				foreach($wrapMe as $key=>$wrapIt){
-					$return[]	=	$this->wrap($wrapping,$wrapIt);
-				}
-
-				return $return;
-
-			}
-
 			public function group(Array $group){
 				$this->_sql[] = "GROUP".$this->_space."BY".$this->_space.implode(',',$group);
+			}
+
+			public function toOutFile($file){
+				$this->_sql[] = "INTO".$this->_space."OUTFILE".$this->_space."'".$file."'";
 			}
 
 			public function reset(){
