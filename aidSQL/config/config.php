@@ -132,6 +132,7 @@
 		"log-path"=>array(
 		),
 		"log-save"=>array(
+			"novalue"=>TRUE
 		),
 		"log-all"=>array(
 			"novalue" => TRUE,

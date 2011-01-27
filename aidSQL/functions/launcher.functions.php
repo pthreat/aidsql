@@ -25,8 +25,9 @@
 	function finish(aidSQL\core\Logger &$log,$totalVulnerableLinks=0){
 
 		$total	=	time() - __START;
-		$log->log("VULNERABLE LINKS FOUND\t: $totalVulnerableLinks",0,"white",TRUE);
-		$log->log("TOTAL TIME\t\t\t: $total seconds",0,"white",TRUE);
+		$color	=	($totalVulnerableLinks > 0)	?	"light_green"	:	"yellow";
+		$log->log("VULNERABLE LINKS FOUND\t: $totalVulnerableLinks",0,$color,TRUE);
+		$log->log("TOTAL TIME\t\t\t: $total seconds",0,"light_cyan",TRUE);
 
 	}
 
