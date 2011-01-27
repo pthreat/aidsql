@@ -63,11 +63,18 @@
 				$table	=	$dom->createElement("table");
 				$table->setAttribute("name",$tName);
 
-				if(sizeof($columns)){
+				foreach($columns["description"] as $descName=>$descValue){
 
-					foreach($columns as $value){
+					$table->setAttribute($descName,$descValue);
+
+				}
+
+				if(sizeof($columns["fields"])){
+
+					foreach($columns["fields"] as $name=>$value){
 
 						$domCol	=	$dom->createElement("column");
+						$domCol->setAttribute("name",$name);
 
 						foreach($value as $nodeName=>$nodeValue){
 
@@ -76,11 +83,15 @@
 								$tmpNode	=	$dom->createElement($nodeName);
 
 								foreach($nodeValue as $value){
+
 									$tmpNode->appendChild($dom->createElement($value,1));
+
 								}	
 								
 							}else{
+
 								$tmpNode	=	$dom->createElement($nodeName,$nodeValue);
+
 							}
 
 							$domCol->appendChild($tmpNode);

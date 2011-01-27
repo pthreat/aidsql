@@ -426,23 +426,6 @@
 					$dbSchema->setDbUser($user);
 					$dbSchema->setDbVersion($version);
 
-					if($this->_config["all"]["schema"] == "complete"){
-
-						$tables	=	array_keys($dbSchema->getTables());
-
-						if(sizeof($tables)){
-
-							foreach($tables as $table){
-
-								$columns	=	$this->getColumns($table,$database);
-								$dbSchema->addTable($table,$columns);
-
-							}
-
-						}
-
-					}
-
 					$this->addSchema($dbSchema);
 
 				}
@@ -465,6 +448,12 @@
 
 				$tables	=	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);
 				$tables	=	$tables[0];
+
+				if(!$tables){
+
+					return FALSE;
+
+				}
 			
 				if($this->detectTruncatedData($tables)){
 
@@ -472,17 +461,39 @@
 					$count	=	$count[0]-1;
 					$select	=	substr($select,0,(strlen($separator)*-1));
 					$tables	=	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
-					var_dump($tables);
-					die();
+
 				}else{
 
 					$tables	=	explode(',',$tables);
 
 				}
 
+				$retTables	=	array();
+
 				foreach($tables as $table){
 
-					$dbSchema->addTable($table,array());
+					$table						=	explode('|',$table);
+
+					$tableName					=	$table[0];
+
+					$tmpTable					=	array();
+
+					$tmpTable["type"]			=	$table[1];
+					$tmpTable["engine"]		=	$table[2];
+					$tmpTable["collation"]	=	$table[3];
+					$tmpTable["increment"]	=	$table[4];
+
+					$columns	=	array();
+
+					if($this->_config["all"]["schema"] == "complete"){
+
+						$columns	=	$this->getColumns($tableName,$database);
+
+					}
+
+					$dbSchema->addTable($tableName,$tmpTable,$columns);
+
+					$retTables[]	=	$table;
 
 				}
 
@@ -511,7 +522,7 @@
 
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,PRIVILEGES".$separator;
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0),0x7c,PRIVILEGES".$separator;
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -537,37 +548,30 @@
 					$select	=	substr($select,0,(strlen($separator)*-1));
 					$columns =	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
 
-					foreach($columns as $column){
-
-						$column	=	explode('|',$column);
-						$tmpCol["name"]		=	$column[0];
-						$tmpCol["type"]		=	$column[1];
-						$tmpCol["privilege"]	=	explode(',',$column[2]);
-
-						$retColumns[]	=	$tmpCol;
-
-					}
 
 				}else{
 
 					$columns		=	explode('?',$columns);
-
-					foreach($columns as $column){
-
-						if(empty($column)){
-							continue;
-						}
-	
-						$column	=	explode('|',$column);
-
-						$tmpCol["name"]		=	$column[0];
-						$tmpCol["type"]		=	$column[1];
-						$tmpCol["privilege"]	=	explode(',',$column[2]);
-
-						$retColumns[]	=	$tmpCol;
-
-					}
 					
+				}
+
+				foreach($columns as $column){
+
+					if(empty($column)){
+						continue;
+					}
+
+					$column							=	explode('|',$column);
+
+					$tmpColName						=	(substr($column[0],0,1)==',')	?	substr($column[0],1)	:	$column[0];
+
+					$tmpCol["type"]				=	$column[1];
+					$tmpCol["key"]					=	$column[2];
+					$tmpCol["extra"]				=	$column[3];
+					$tmpCol["privilege"]			=	explode(',',$column[4]);
+
+					$retColumns[$tmpColName]	=	$tmpCol;
+
 				}
 
 				return $retColumns;
