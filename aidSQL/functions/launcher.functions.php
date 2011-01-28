@@ -235,12 +235,25 @@
 
 			$schemas	=	$plugin->getAllSchemas();
 
-			if(in_array("save-xml",array_keys($options))){
+
+			$parameters	=	array_keys($options);
+
+			if(in_array("save-xml",$parameters)){
 
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
 
 					$xml	=	makeXML($plugin,$schemas);
 					file_put_contents($logDirectory.DIRECTORY_SEPARATOR."db-schemas.xml",$xml);
+
+				}
+
+			}
+
+			if(in_array("log-save",$parameters)){
+
+				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"log")){
+
+					makeLog($plugin,$schemas,$log);
 
 				}
 
@@ -259,16 +272,6 @@
 		return TRUE;
 
 	}
-
-	function generateReport(Array $schemas){
-
-		foreach($schemas as $schema){
-			var_dump($schema);
-			die();
-		}
-
-	}
-
 
 	function filterSites (Array &$sites,aidSQL\core\Logger &$log,$regex=NULL){
 

@@ -122,4 +122,72 @@
 	}
 
 
+	function makeLog(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas,\aidSQL\core\Logger &$log){
+
+		$url					=	$plugin->getHttpAdapter()->getUrl();
+
+		$pluginName			=	$plugin->getPluginName();
+		$pluginAuthor		=	$plugin->getPluginAuthor();
+		$affected			=	$plugin->getAffectedVariable();
+		$pluginMethod		=	$affected["method"];
+		$domain				=	$url->getHost();
+		$link					=	$url->getUrlAsString(FALSE);
+		$requestVariables	=	implode(',',$url->getQueryAsArray());
+		$injection			=	sprintf("%s",$affected["injection"]);
+
+		foreach($schemas as $schema){
+
+			$log->log("------------------------------------------------",0,"white",TRUE);
+			$log->log("SCHEMA ".$schema->getDbName(),0,"white",TRUE);
+			$log->log("------------------------------------------------",0,"white",TRUE);
+			$log->log("VERSION : ".$schema->getDbVersion(),0,"white",TRUE);
+			$log->log("DATADIR : ".$schema->getDbDataDir(),0,"white",TRUE);
+
+			$schemaTables	=	$schema->getTables();
+
+			foreach($schemaTables as $tName=>$columns){
+
+				$log->log("TABLE $tName",0,"white",TRUE);		
+				$log->log("---------------------",0,"white",TRUE);		
+
+				foreach($columns["description"] as $descName=>$descValue){
+
+					$log->log("$descName\t\t:\t$descValue",0,"white",TRUE);
+
+				}
+
+				$log->log("COLUMNS",0,"white",TRUE);
+				$log->log("---------------------",0,"white",TRUE);		
+
+				if(!sizeof($columns["fields"])){
+					continue;
+				}
+
+				foreach($columns["fields"] as $name=>$value){
+
+					$log->log("NAME\t\t:\t$name",0,"white",TRUE);
+
+					foreach($value as $nodeName=>$nodeValue){
+						
+						if(is_array($nodeValue)){
+
+							$log->log("$nodeName\t\t:\t".implode(',',$nodeValue),0,"white",TRUE);
+
+						}else{
+
+							$log->log("$nodeName\t\t:\t$name",0,"white",TRUE);
+
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
+	}
+
+
 ?>
