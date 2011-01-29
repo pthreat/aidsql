@@ -50,7 +50,7 @@
 
 				$this->log("String identifier is: ".$this->_openTag." - ".$this->_closeTag,0,"white");
 
-				$regex	= '/'.$this->_openTag."+.*".$this->_closeTag.'/';
+				$regex	= '/'.$this->_openTag.".*?".$this->_closeTag.'/';
 				$matches = NULL;
 
 				preg_match_all($regex,$content,$matches,PREG_SET_ORDER);

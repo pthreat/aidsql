@@ -189,10 +189,6 @@
 			"novalue"=>TRUE
 		),
 		"http-ignore-errors"=>array(
-			"values"=>array(
-					0,
-					1
-			)
 		),
 		"shell-code"=>array(
 		),

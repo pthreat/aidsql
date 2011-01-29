@@ -423,10 +423,17 @@
 
 					$dbSchema	=	$this->getSingleSchema($database);
 
+					if(!$dbSchema){
+
+						$this->log("WARNING: Couldnt fetch database schema!",2,"yellow");
+						return FALSE;
+
+					}
+
 					$dbSchema->setDbUser($user);
 					$dbSchema->setDbVersion($version);
-
 					$this->addSchema($dbSchema);
+
 
 				}
 

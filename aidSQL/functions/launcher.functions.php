@@ -233,9 +233,7 @@
 
 		if($options["schema"]!=="none"){
 
-			$schemas	=	$plugin->getAllSchemas();
-
-
+			$schemas		=	$plugin->getAllSchemas();
 			$parameters	=	array_keys($options);
 
 			if(in_array("save-xml",$parameters)){
@@ -243,7 +241,7 @@
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
 
 					$xml	=	makeXML($plugin,$schemas);
-					file_put_contents($logDirectory.DIRECTORY_SEPARATOR."db-schemas.xml",$xml);
+					file_put_contents($logDirectory.DIRECTORY_SEPARATOR.$url->getPage()."_db-schemas.xml",$xml);
 
 				}
 
@@ -253,7 +251,8 @@
 
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"log")){
 
-					makeLog($plugin,$schemas,$log);
+					$txtLog	=	makeLog($plugin,$schemas,$log);
+					file_put_contents($logDirectory.DIRECTORY_SEPARATOR.$url->getPage()."_console.log",$txtLog);
 
 				}
 

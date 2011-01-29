@@ -124,40 +124,54 @@
 
 	function makeLog(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas,\aidSQL\core\Logger &$log){
 
-		$url					=	$plugin->getHttpAdapter()->getUrl();
+		$url			=	$plugin->getHttpAdapter()->getUrl();
+		$affected	=	$plugin->getAffectedVariable();
 
-		$pluginName			=	$plugin->getPluginName();
-		$pluginAuthor		=	$plugin->getPluginAuthor();
-		$affected			=	$plugin->getAffectedVariable();
-		$pluginMethod		=	$affected["method"];
-		$domain				=	$url->getHost();
+		$txtLog		=	NULL;
+		$txtLog	.=	"HOST ".$url->getHost()."\n";
+		$txtLog	.=	"------------------------------------\n";
+		$txtLog	.=	"PLUGIN NAME\t\t:\t".$plugin->getPluginName()."\n";
+		$txtLog	.=	"PLUGIN AUTHOR\t\t:\t".$plugin->getPluginAuthor()."\n";
+		$txtLog	.=	"PLUGIN METHOD\t\t:\t".$affected["method"]."\n";
+		
 		$link					=	$url->getUrlAsString(FALSE);
-		$requestVariables	=	implode(',',$url->getQueryAsArray());
-		$injection			=	sprintf("%s",$affected["injection"]);
+		$requestVariables	=	$url->getQueryAsArray();
+
+		$reqVars				=	array();
+		foreach($requestVariables as $var=>$value){
+
+			$reqVars[]	=	$var;
+
+		}
+
+		$txtLog	.=	"AFFECTED VARIABLE\t:\t".$affected["variable"]."\n";
+		$txtLog	.=	"REQUEST VARIABLES\t:\t".implode(',',$reqVars)."\n";
+		$txtLog	.=	"INJECTION\t\t:\t".sprintf("%s",$affected["injection"])."\n";
+		$txtLog	.=	"VULNERABLE LINK\t\t:\t".$url->getUrlAsString()."\n";
 
 		foreach($schemas as $schema){
 
-			$log->log("------------------------------------------------",0,"white",TRUE);
-			$log->log("SCHEMA ".$schema->getDbName(),0,"white",TRUE);
-			$log->log("------------------------------------------------",0,"white",TRUE);
-			$log->log("VERSION : ".$schema->getDbVersion(),0,"white",TRUE);
-			$log->log("DATADIR : ".$schema->getDbDataDir(),0,"white",TRUE);
+			$txtLog	.=	"\n------------------------------------------------\n";
+			$txtLog	.=	"SCHEMA ".$schema->getDbName()."\n";
+			$txtLog	.=	"------------------------------------------------\n";
+			$txtLog	.=	"VERSION : ".$schema->getDbVersion()."\n";
+			$txtLog	.=	"DATADIR : ".$schema->getDbDataDir()."\n";
 
 			$schemaTables	=	$schema->getTables();
 
 			foreach($schemaTables as $tName=>$columns){
 
-				$log->log("TABLE $tName",0,"white",TRUE);		
-				$log->log("---------------------",0,"white",TRUE);		
+				$txtLog	.=	"\nTABLE $tName\n";
+				$txtLog	.=	"---------------------\n";
 
 				foreach($columns["description"] as $descName=>$descValue){
 
-					$log->log("$descName\t\t:\t$descValue",0,"white",TRUE);
+					$txtLog	.=	"$descName\t\t:\t$descValue\n";
 
 				}
 
-				$log->log("COLUMNS",0,"white",TRUE);
-				$log->log("---------------------",0,"white",TRUE);		
+				$txtLog	.=	"\nCOLUMNS\n";
+				$txtLog	.=	"---------------------\n";
 
 				if(!sizeof($columns["fields"])){
 					continue;
@@ -165,17 +179,17 @@
 
 				foreach($columns["fields"] as $name=>$value){
 
-					$log->log("NAME\t\t:\t$name",0,"white",TRUE);
+					$txtLog	.=	"NAME\t\t:\t$name\n";
 
 					foreach($value as $nodeName=>$nodeValue){
 						
 						if(is_array($nodeValue)){
 
-							$log->log("$nodeName\t\t:\t".implode(',',$nodeValue),0,"white",TRUE);
+							$txtLog	.=	"\t\t$nodeName => ".implode(',',$nodeValue)."\n";
 
 						}else{
 
-							$log->log("$nodeName\t\t:\t$name",0,"white",TRUE);
+							$txtLog	.=	"\t\t$nodeName\t\t$nodeValue\n";
 
 						}
 
@@ -186,6 +200,8 @@
 			}
 
 		}
+
+		return $txtLog;
 
 	}
 
