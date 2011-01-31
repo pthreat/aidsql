@@ -42,7 +42,7 @@
 
 			public function __construct(\aidSQL\http\Adapter &$adapter=NULL,\aidSQL\core\Logger &$log=NULL){
 
-				$this->_url	=	new \aidSQL\http\URL($this->_baseUrl);
+				$this->_url	=	new \aidSQL\core\URL($this->_baseUrl);
 
 				if(!is_null($log)){
 
@@ -92,7 +92,7 @@
 
 			public function setBaseUrl($url=NULL){
 
-				$this->_url	=	new \aidSQL\http\Url($url);	
+				$this->_url	=	new \aidSQL\core\Url($url);	
 
 			}
 

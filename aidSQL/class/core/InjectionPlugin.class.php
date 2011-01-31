@@ -24,6 +24,7 @@
 
 			//Injection related stuff
 
+			protected	$_injection					=	array();			//Contains all detected injection parameters
 			protected 	$_injectionAttempts		=	40;
 			private		$_lastInjectionMethod	=	NULL;				//Contains the last called injection method
 			private		$_affectedVariable		=	array();			//Affected URL Variable, plus, the working injection
@@ -55,16 +56,25 @@
 
 				$this->setConfig($config);
 
-				$keys = array_keys($config);
-				
-				if(in_array("numeric-only",$keys)){
+				//Order Variables in the request like you want
+
+				if(array_key_exists("numeric-only",$config)){
 
 					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric");
 					$url->addRequestVariables($requestVariables);
 
-				}elseif(in_array("strings-only",$keys)){
+				}elseif(array_key_exists("strings-only",$config)){
 
 					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"string");
+					$url->addRequestVariables($requestVariables);
+
+				}elseif(array_key_exists("numeric-first",$config)){
+
+					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric-first");
+					$url->addRequestVariables($requestVariables);
+						
+				}elseif(array_key_exists("strings-first",$config)){
+					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"strings-first");
 					$url->addRequestVariables($requestVariables);
 
 				}
@@ -79,12 +89,22 @@
 
 			}
 
-			protected function setQueryBuilder(\aidSQL\db\QueryBuilderInterface &$queryBuilder){
-				$this->_queryBuilder	=	$queryBuilder;
+			public function setInjectionParameters(Array $parameters){
+
+				$this->_injection	=	($parameters);
+
 			}
 
-			public function getAffectedVariable(){
-				return $this->_affectedVariable;
+			public function getInjectionParameters(){
+
+				return $this->_injection;
+
+			}
+
+			public function setQueryBuilder(\aidSQL\db\QueryBuilderInterface &$queryBuilder){
+
+				$this->_queryBuilder	=	$queryBuilder;
+
 			}
 
 			public function getPluginAuthor(){
@@ -251,7 +271,28 @@
 						
 			}
 
+			protected function isIgnoredRequestVariable($requestVariable,$requestVariableValue=NULL){
+
+				if(!array_key_exists("ignore-variables",$this->_config["all"])){
+					return FALSE;
+				}
+
+				$ignore	=	explode(',',$this->_config["all"]["ignore-variables"]);
+
+				if(in_array($requestVariable,$ignore)){
+
+					$this->log("Ignoring $requestVariable",0,"yellow");
+					return TRUE;
+
+				}
+
+
+				return FALSE;
+
+			}
+
 			protected function query($requestVariable,$injectionMethod=NULL){
+
 
 				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
@@ -297,22 +338,7 @@
 					}
 
 					$result	=	$this->_parser->analyze($content);
-
-					if($result){
-
-						if(!sizeof($this->_affectedVariable)){
-
-							$this->_affectedVariable = array (
-																			"variable"	=>	$requestVariable,
-																			"injection"	=>	$this->_lastQuery,
-																			"method"		=>	$this->_injectionMethodString.$injectionMethod,
-																			"payload"	=>	$this->_payload
-							);
-
-						}
-
-						return $result;
-					}
+					return $result;
 
 				}catch(\Exception $e){
 
@@ -378,6 +404,14 @@
 
 					case "string":
 						return $strVariables;
+						break;
+
+					case "numeric-first":
+						return array_merge($numVariables,$strVariables);
+						break;
+
+					case "strings-first":
+						return array_merge($strVariables,$numVariables);
 						break;
 
 					default:

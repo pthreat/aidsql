@@ -1,6 +1,6 @@
 <?php
 
-	namespace aidSQL\http {
+	namespace aidSQL\core {
 
 		class Url {
 

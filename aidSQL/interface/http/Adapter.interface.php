@@ -4,7 +4,7 @@
 
 		interface Adapter {
 
-			public function setUrl(\aidSQL\http\URL $url);
+			public function setUrl(\aidSQL\core\Url $url);
 			public function getUrl();
 			public function fetch();
 			public function setMethod($method);

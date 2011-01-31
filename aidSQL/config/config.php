@@ -131,7 +131,7 @@
 		),
 		"log-path"=>array(
 		),
-		"log-save"=>array(
+		"save-log"=>array(
 			"novalue"=>TRUE
 		),
 		"log-all"=>array(
@@ -147,7 +147,6 @@
 		),
 		"classpath"=>array(
 		),
-		
 		"plugin-info-load-order"=>array(
 		),
 		"crawl"=>array(
@@ -205,6 +204,20 @@
 			"required"=>TRUE
 		),
 		"ommit-schemas"=>array(
+		),
+		"ignore-variables"=>array(
+		),
+		"makedb"=>array(
+			"requires"=>array(
+										"dbpass",
+										"dbhost"
+			),
+			"overlaps-with"=>array("url")
+		),
+		"dbhost"=>array(
+		),
+		"dbpass"=>array(
 		)
+		
 	);
 ?>

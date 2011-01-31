@@ -6,7 +6,7 @@
 
 			private		$_cookie					=	NULL;
 			private		$_curlOptions			=	array();
-			private		$_url						=	NULL;		//\aidSQL\http\Url Object
+			private		$_url						=	NULL;		//\aidSQL\core\Url Object
 			private		$_handler				=	NULL;
 			private		$_content				=	NULL;
 			private		$_requestInterval		=	0;
@@ -27,7 +27,7 @@
 
 			private		$_logger				=	NULL;
 
-			public function __construct(\aidSQL\http\Url $url=NULL){
+			public function __construct(\aidSQL\core\Url $url=NULL){
 
 				if(!is_null($url)){
 					$this->setUrl($url);
@@ -261,7 +261,7 @@
 
 			}
 
-			public function setUrl(\aidSQL\http\Url $url){
+			public function setUrl(\aidSQL\core\Url $url){
 
 				$this->log("Normalized URL: ".$url,0,"white");
 				$this->_url = $url;

@@ -54,7 +54,8 @@
 		$log->log("--google-shuffle\t\tShuffle search results (default yes)",0,"white");
 
 		$log->log("\nLOGGING\n");
-		$log->log("--log-save\t\t\tFile where to dump results",0,"white");
+		$log->log("--save-log\t\t\tFile where to dump results",0,"white");
+		$log->log("--save-xml\t\t\tSave obtained schemas in XML format",0,"white");
 		$log->log("--log-prepend-date\t\tPrepend date to log (default 0)",0,"white");
 		$log->log("--colors\t\t\tActivate / Deactivate colors (default 1)",0,"white");
 
@@ -247,7 +248,7 @@
 
 			}
 
-			if(in_array("log-save",$parameters)){
+			if(in_array("save-log",$parameters)){
 
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"log")){
 

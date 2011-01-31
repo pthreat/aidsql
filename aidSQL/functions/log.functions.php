@@ -8,7 +8,6 @@
 		$main			=	$dom->createElement("aidSQL");
 
 		$url			=	$plugin->getHttpAdapter()->getUrl();
-		$affected	=	$plugin->getAffectedVariable();
 
 		$domain		=	$dom->createElement("host",$url->getHost());
 		$date			=	$dom->createElement("date",date("Y-m-d H:i:s"));
@@ -16,34 +15,46 @@
 		$main->appendChild($domain);
 		$main->appendChild($date);
 
-		$injection	=	$dom->createElement("sqli-details");
+		$sqliDetails			=	$dom->createElement("sqli-details");
+		$sqliDetails->appendChild($dom->createElement("vulnlink",$url->getUrlAsString(FALSE)));
 
-		$injection->appendChild($dom->createElement("vulnlink",$url->getUrlAsString(FALSE)));
+		$domInjection			=	$dom->createElement("injection");
+		$pluginDom				=	$dom->createElement("plugin-details");
+		$pluginDom->appendChild($dom->createElement("plugin",$plugin->getPluginName()));
+		$pluginDom->appendChild($dom->createElement("author",$plugin->getPluginAuthor()));
 
-		$requestVariables	=	$url->getQueryAsArray();
+		$sqliDetails->appendChild($pluginDom);
 
-		$params				=	$dom->createElement("parameters");
-		$injection->appendChild($dom->createElement("injection",sprintf("%s",$affected["injection"])));
+		$injectionParameters	=	$plugin->getInjectionParameters();
 
-		foreach($requestVariables as $var=>$value){
+		foreach($injectionParameters as $iKey=>$iVal){
 
-			$params->appendChild($dom->createElement("param",$var));
-			$vulnerable	=	($var == $affected["variable"])	?	1	:	0;
-			$params->appendChild($dom->createElement("vulnerable",$vulnerable));
+			if(is_array($iVal)){
+
+				$element	=	$dom->createElement($iKey);
+
+				$i	=	0;
+
+				foreach($iVal as $key=>$val){
+
+					$key			=	is_int($key)	?	"value_".$i++	:	$key;
+					$domValue	=	$dom->createElement($key,$val);
+					$element->appendChild($domValue);
+
+				}
+
+				$domInjection->appendChild($element);
+
+			}else{
+
+				$domInjection->appendChild($dom->createElement($iKey,$iVal));
+
+			}
 
 		}
 
-		$injection->appendChild($params);
-
-		$pluginDom		=	$dom->createElement("plugin-details");
-		
-		$pluginDom->appendChild($dom->createElement("plugin",$plugin->getPluginName()));
-		$pluginDom->appendChild($dom->createElement("author",$plugin->getPluginAuthor()));
-		$pluginDom->appendChild($dom->createElement("method",$affected["method"]));
-
-		$injection->appendChild($pluginDom);
-
-		$main->appendChild($injection);
+		$sqliDetails->appendChild($domInjection);
+		$main->appendChild($sqliDetails);
 
 		$domSchemas	=	$dom->createElement("schemas");
 

@@ -4,13 +4,13 @@
 
 		class Runner{
 
-			private	$_debug			=	TRUE;
-			private	$_vulnerable	=	FALSE;		//boolean vulnerable TRUE or not vulnerable FALSE
-			private	$_logger			=	NULL;			//Log object
-			private	$_httpAdapter	=	NULL;
-			private	$_options		=	array();
-			private	$_pLoader		=	NULL;			//Plugin Loader Instance
-			private	$_crawler		=	NULL;			//This object might contain important information that 
+			private	$_debug					=	TRUE;
+			private	$_vulnerable			=	FALSE;		//boolean vulnerable TRUE or not vulnerable FALSE
+			private	$_logger					=	NULL;			//Log object
+			private	$_httpAdapter			=	NULL;
+			private	$_options				=	array();
+			private	$_pLoader				=	NULL;			//Plugin Loader Instance
+			private	$_crawler				=	NULL;			//This object might contain important information that 
 																//may be used by the plugins.
 
 			public function __construct(\aidSQL\parser\CmdLine $parser,\aidSQL\http\Adapter &$adapter,\aidSQL\http\crawler &$crawler,\aidSQL\core\Logger &$log=NULL,\aidSQL\core\PluginLoader &$pLoader){

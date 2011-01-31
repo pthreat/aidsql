@@ -23,7 +23,7 @@
 			private	$_urlList			=	array();		//Holds all the urls
 			private	$_config				=	array();		//Holds configuration parameters passed from the command line and config
 
-			public function __construct(\aidSQL\http\Adapter &$httpAdapter,\aidSQL\http\Url $url,\aidSQL\core\Logger &$log){
+			public function __construct(\aidSQL\http\Adapter &$httpAdapter,\aidSQL\core\Url $url,\aidSQL\core\Logger &$log){
 
 				$httpAdapter->setUrl($url);
 				
@@ -334,7 +334,7 @@
 
 			}
 
-			private function addExternalSite(\aidSQL\http\Url $extUrl){
+			private function addExternalSite(\aidSQL\core\Url $extUrl){
 
 				foreach($this->_externalUrls as $ext){
 
@@ -357,7 +357,7 @@
 			*@return bool FALSE not crawled
 			*/
 
-			public function wasCrawled(\aidSQL\http\Url $url,$method=NULL){
+			public function wasCrawled(\aidSQL\core\Url $url,$method=NULL){
 
 				foreach($this->_urlList as $index=>$_url){
 
@@ -450,7 +450,7 @@
 
 					$path	=	(dirname($uri)=='.')	? $path.$this->_host->getPathSeparator() : $this->_host->getPath().$this->_host->getPathSeparator();
 
-					$url				=	new \aidSQL\http\URL($this->_host->getScheme()."://"				.
+					$url				=	new \aidSQL\core\Url($this->_host->getScheme()."://"				.
 																	$this->_host->getHost()							.
 																	$this->_host->getPathSeparator()				.
 																	$path													.
@@ -543,7 +543,7 @@
 
 			}
 
-			private function searchForms(\aidSQL\http\Url $url,\aidSQL\core\Dom &$dom){
+			private function searchForms(\aidSQL\core\Url $url,\aidSQL\core\Dom &$dom){
 
 				$forms	=	$dom->fetchForms();
 
@@ -596,7 +596,7 @@
 
 			}
 
-			public function addUrl(\aidSQL\http\Url $url=NULL,$method=NULL,$validatePageType=TRUE){
+			public function addUrl(\aidSQL\core\Url $url=NULL,$method=NULL,$validatePageType=TRUE){
 
 				$method	=	(empty($method))	?	"GET"	:	trim(strtoupper($method));
 
@@ -694,7 +694,7 @@
 
 			}
 
-			public function crawl(\aidSQL\http\Url $url=NULL){
+			public function crawl(\aidSQL\core\Url $url=NULL){
 
 				$this->log($this->drawLine($this->_depthCount++,0,"light_cyan"));
 
@@ -938,7 +938,7 @@
 
 			}
 
-			public function isExternalSite(\aidSQL\http\Url $url){
+			public function isExternalSite(\aidSQL\core\Url $url){
 
 				$currentHost	=	$this->_host->getHost();
 				$givenHost		=	$url->getHost();
