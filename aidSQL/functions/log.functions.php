@@ -61,10 +61,9 @@
 		foreach($schemas as $schema){
 
 			$db		=	$dom->createElement("database");
-
-			$db->appendChild($dom->createElement("name",$schema->getDbName()));
-			$db->appendChild($dom->createElement("version",$schema->getDBVersion()));
-			$db->appendChild($dom->createElement("datadir",$schema->getDbDataDir()));
+			$db->setAttribute("name",$schema->getDbName());
+			$db->setAttribute("version",$schema->getDBVersion());
+			$db->setAttribute("datadir",$schema->getDbDataDir());
 
 			$tables			=	$dom->createElement("tables");
 			$schemaTables	=	$schema->getTables();

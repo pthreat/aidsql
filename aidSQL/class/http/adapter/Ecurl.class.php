@@ -13,7 +13,9 @@
 			private		$_method					=	NULL;
 			private		$_transferInfo			=	NULL;
 			private		$_connectRetry			=	20;	//Put in config and interfaces!!!!!
+			private		$_ignoreHttpErrors	=	FALSE;
 			private		$_config					=	array();
+
 
 			private		$_proxy				=	array(
 				"server"		=>NULL,
@@ -49,6 +51,9 @@
 
 				}
 
+				if(array_key_exists("http-ignore-errors",$config)){
+					$this->_ignoreHttpErrors	=	TRUE;
+				}
 
 				if(isset($config["request-interval"])&&$config["request-interval"]>0){
 
@@ -263,7 +268,10 @@
 
 			public function setUrl(\aidSQL\core\Url $url){
 
-				$this->log("Normalized URL: ".$url,0,"white");
+				if($this->_config["verbose"]==1){
+					$this->log("Normalized URL: ".$url,0,"white");
+				}
+
 				$this->_url = $url;
 
 			}
@@ -454,9 +462,15 @@
 
 				} while($connect < $this->_connectRetry && $errno > 0);
 
-				if($errno){
+				if($this->_transferInfo["http_code"]!=200){
+					$this->log("WARNING: GOT ".$this->_transferInfo["http_code"],2,"yellow");
+				}
 
-					throw (new \Exception($error));
+				if(!$this->_ignoreHttpErrors){
+
+					if($errno){
+						throw (new \Exception($error));
+					}
 
 				}
 
@@ -486,7 +500,7 @@
 
 			public function setLog(\aidSQL\core\Logger &$log){
 
-				$this->log=$log;
+				$this->_logger=$log;
 
 			}
 
