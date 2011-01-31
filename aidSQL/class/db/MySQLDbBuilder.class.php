@@ -135,7 +135,7 @@
 							$columns				=	array_keys($schemaTableValues["columns"]);
 							$select				=	implode('0x7c',$columns);
 							$from					=	$schemaName.'.'.$schemaTableName;
-
+							$plugin->
 							var_dump($plugin->unionQueryIterateLimit($select,$from));
 							die();
 
