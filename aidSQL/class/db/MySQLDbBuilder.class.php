@@ -19,7 +19,7 @@
 				$pLoader->setConfig($config);
 				$this->_pLoader		=	$pLoader;
 				
-				$this->makeDB();
+				$this->makeDb();
 	
 			}
 
@@ -150,11 +150,19 @@
 			}
 
 			public function makeDb(){
+		
+				if(!class_exists("MySQLi")){
+					throw (new \Exception("Couldnt make mysqli instance, make sure you have the mysqli extension installed"));
+				}
 
-				$mysqli	=	@new \MySQLi($this->_config["dbhost"],"root",$this->_config["dbpass"]);
+				$mysqli	=	new \MySQLi($this->_config["dbhost"],"root",$this->_config["dbpass"]);
+
 
 				if ($mysqli->connect_error) {
+
+
 					throw(new \Exception('MySQLi Connect Error (' . $mysqli->connect_errno . '), check the host and password!'));
+
 				}
 
 				$schemas	=	$this->parseXml();

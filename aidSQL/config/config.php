@@ -215,8 +215,14 @@
 			"overlaps-with"=>array("url")
 		),
 		"dbhost"=>array(
+			"requires"=>array(
+				"makedb"
+			)
 		),
 		"dbpass"=>array(
+			"requires"=>array(
+				"makedb"
+			)
 		)
 		
 	);
