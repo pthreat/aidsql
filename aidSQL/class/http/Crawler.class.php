@@ -459,7 +459,7 @@
 
 				}else{
 
-					$url	=	new \aidSQL\http\URL($uri);
+					$url	=	new \aidSQL\core\URL($uri);
 
 				}
 

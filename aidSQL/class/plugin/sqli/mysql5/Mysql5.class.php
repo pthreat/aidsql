@@ -252,7 +252,7 @@
 
 			}
 
-			private function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
+			public function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
 
 				$params	=	&$this->_injection;
 
