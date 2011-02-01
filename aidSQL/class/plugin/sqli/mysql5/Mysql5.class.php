@@ -335,6 +335,12 @@
 
 			}
 
+			public function count($value,$from=NULL,Array $where=array(),Array $group=array(),$count=NULL){
+
+				return $this->unionQuery("COUNT($value)",$from,$where,$group);
+					
+			}
+
 			//Suppose you have detected truncated data, well, bad luck.
 			//Hopefully we can count the registers and do a limit iteration	
 			//through that :)

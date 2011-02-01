@@ -133,10 +133,10 @@
 
 							$attributes			=	$schemaTableValues["attributes"];
 							$columns				=	array_keys($schemaTableValues["columns"]);
-							$select				=	implode('0x7c',$columns);
+							$select				=	implode(',0x7c,',$columns);
 							$from					=	$schemaName.'.'.$schemaTableName;
-							$plugin->
-							var_dump($plugin->unionQueryIterateLimit($select,$from));
+							$count				=	$plugin->count($columns[0],$from);
+							var_dump($plugin->unionQueryIterateLimit($select,$from,array(),array(),$count[0]-1));
 							die();
 
 						}
