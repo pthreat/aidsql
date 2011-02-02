@@ -439,7 +439,7 @@
 				}
 
 				if((int)$this->_requestInterval > 0){
-					sleep($this->_requestInterval);
+					usleep($this->_requestInterval);
 				}
 
 				$connect	=	0;

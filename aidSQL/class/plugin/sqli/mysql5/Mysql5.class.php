@@ -23,8 +23,8 @@
 
 				$parser	=	new \aidSQL\parser\Generic();
 
-				$openTag				=	"{!";
-				$closeTag			=	"!}";
+				$openTag				=	"<aidsql>";
+				$closeTag			=	"</aidsql>";
 
 				$hexOpen				=	\String::hexEncode($openTag);
 				$hexClose			=	\String::hexEncode($closeTag);

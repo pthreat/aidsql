@@ -48,36 +48,28 @@
 
 			public function analyze($content){
 
-				$this->log("String identifier is: ".$this->_openTag." - ".$this->_closeTag,0,"white");
+				$dom		=	new \DomDocument();
+				@$dom->loadHTML($content);
+				$tagName	=	preg_replace("#<|>#","",$this->_openTag);
+				$tags		=	$dom->getElementsByTagName(preg_replace('/\<|\>/','',$this->_openTag));
+				$dom->strictErrorChecking	=	FALSE;
 
-				$regex	= '/'.$this->_openTag.".*?".$this->_closeTag.'/';
-				$matches = NULL;
+				if($tags->length > 0){
 
-				preg_match_all($regex,$content,$matches,PREG_SET_ORDER);
+					$matches	=	array();
 
-				if(sizeof($matches)){
+					foreach($tags as $tag){
 
-					$matching = array();
-
-					foreach($matches as $key=>$match){
-
-						if(empty($match)){
-							continue;
-						}
-
-						$match=$match[0];
-						$match = preg_replace("/^({$this->_openTag})/",'',$match);
-						$match = preg_replace("/({$this->_closeTag})/",'',$match);
-						$matching[$key]=$match;
+						$matches[]	=	$tag->nodeValue;
 
 					}
 
-					return $matching;
+					return $matches;	
 
 				}
 
 				return FALSE;
-
+				
 			}
 
 		}
