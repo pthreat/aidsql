@@ -299,4 +299,54 @@
 
 	}
 
+	function interactive(\aidSQL\core\Logger &$log,Array $options,$key=NULL){
+
+		do{
+
+			$count	=	1;
+
+
+			foreach($options as $opt){
+
+				if(!is_null($key)){
+
+					$log->log($count++.'. {'.$opt[$key].'}',0,"light_cyan");
+
+				}else{
+
+					$log->log($count++.'. {'.$opt.'}',0,"light_cyan");
+
+				}
+
+			}
+
+			echo "SELECT>";
+
+			$handle	=	fopen ("php://stdin","r");
+			$selectedIndexes	=	fgets($handle);
+			$selectedIndexes	=	preg_replace("/[\r\n]/",'',$selectedIndexes);
+			$selectedIndexes	=	explode(',',$selectedIndexes);
+
+			foreach($selectedIndexes as &$selected){
+
+				$selected	 =	(int)$selected-1;
+
+				if(!isset($options[$selected])){
+
+					echo "Please enter a valid option\n";
+					$selectedIndexes	=	'';
+					break;
+
+				}
+
+			}	
+
+		}while(empty($selectedIndexes));
+
+		fclose($handle);
+
+		return $selectedIndexes;
+
+	}
+
 ?>

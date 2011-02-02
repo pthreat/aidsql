@@ -21,32 +21,11 @@
 					$this->setLog($log);
 				}
 
-				$options				=	$parser->getParsedOptions();
-
-				foreach($options as $opt=>$value){
-
-					if(preg_match("#sqli-.*|info-.*#",$opt)){
-
-						unset($options[$opt]);
-
-						$type	=	substr($opt,0,$pos=strpos($opt,"-"));
-
-						$option										=	substr($opt,strpos($opt,"-")+1);
-						$plugin										=	substr($option,0,strpos($option,"-"));
-						$option										=	substr($option,strpos($option,"-")+1);
-
-						$options[$type][$plugin][$option]	=	$value;
-
-					}
-
-				}
-
-
-				$this->_options	=	$options;
-				$this->_pLoader->setConfig($options);
+				$this->_options	=	$parser->getParsedOptions();
+				$this->_pLoader->setConfig($this->_options);
 			
 				$this->setHttpAdapter($adapter);
-				$this->configureHttpAdapter($options);
+				$this->configureHttpAdapter($this->_options);
 				$this->setCrawler($crawler);
 
 			}

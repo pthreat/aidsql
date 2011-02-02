@@ -34,6 +34,23 @@
 
 				}
 
+				foreach($config as $opt=>$value){
+					if(preg_match("#sqli-.*|info-.*#",$opt)){
+
+						unset($config[$opt]);
+
+						$type		=	substr($opt,0,$pos=strpos($opt,"-"));
+
+						$option	=	substr($opt,strpos($opt,"-")+1);
+						$plugin	=	substr($option,0,strpos($option,"-"));
+						$option	=	substr($option,strpos($option,"-")+1);
+
+						$config[$type][$plugin][$option]	=	$value;
+
+					}
+
+				}
+
 				$this->_config	=	$config;
 
 			}
