@@ -213,11 +213,17 @@
 
 						$attributes			=	$schemaTableValues["attributes"];
 						$columns				=	array_keys($schemaTableValues["columns"]);
+						$colInsert			=	$columns;
+						
+						foreach($columns as &$col){
+							$col="COALESCE($col,0)";
+						}
 
 						$select				=	implode(',0x7c,',$columns);
 						$from					=	$schemaName.'.'.$schemaTableName;
 
 						$count				=	$plugin->count($columns[0],$from);
+
 						$count				=	$count[0] - 1;
 						
 						if($count==-1){
@@ -243,7 +249,7 @@
 							$values				=	$values[0];
 							$values				=	explode('|',$values);
 
-							if(!$this->insertRegisters($mysqli,$schemaTableName,$columns,$values)){
+							if(!$this->insertRegisters($mysqli,$schemaTableName,$colInsert,$values)){
 								throw(new \Exception("Couldnt insert registers on $schemaTableName table!"));
 							}
 
