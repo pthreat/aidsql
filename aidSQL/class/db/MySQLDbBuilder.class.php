@@ -32,7 +32,7 @@
 
 			private function log($msg=NULL, $color="white", $level=0, $toFile=FALSE) {
 
-				if (isset($this->_options["log-all"])) {
+				if (isset($this->_config["log-all"])) {
 					$toFile = TRUE;
 				}
 
@@ -41,6 +41,7 @@
 					$this->_logger->setPrepend('[' . __CLASS__ . ']');
 					$this->_logger->log($msg, $color, $level, $toFile);
 					return TRUE;
+
 				}
 
 				return FALSE;
@@ -155,16 +156,14 @@
 			public function makeDb(){
 		
 				if(!class_exists("MySQLi")){
-					throw (new \Exception("Couldnt make mysqli instance, make sure you have the mysqli extension installed"));
+					throw (new \Exception("Couldnt make MySQLDBAdapter instance, make sure you have the mysqli extension installed"));
 				}
 
-				$mysqli	=	new \MySQLi($this->_config["dbhost"],"root",$this->_config["dbpass"]);
+				$sqli		=	new \aidSQL\db\MySQLDbAdapter($this->_logger,$this->_config["dbhost"],"root",$this->_config["dbpass"]);
 
+				if($this->_config["verbose"]){
 
-				if ($mysqli->connect_error) {
-
-
-					throw(new \Exception('MySQLi Connect Error (' . $mysqli->connect_errno . '), check the host and password!'));
+					$sqli->setVerbose();
 
 				}
 
@@ -175,15 +174,15 @@
 					throw (new \Exception("Could not make database, perhaps the sql injection vulnerability was solved?"));
 				}
 
+				$allPrefix	=	"aidSQL_";
+
 				foreach($schemas as $schemaName=>$schemaTables){
 
-					$this->log("Creating database schema $schemaName",0,"light_green");
+					$schemaName	=	$allPrefix.$schemaName;
 
-					if(!$this->createDatabase($mysqli,"aidSQL_".$schemaName)){
-						throw(new \Exception("Couldnt create database aidSQL_$schemaName"));
-					}
+					$this->createDatabase($sqli,$schemaName);
 
-					$mysqli->select_db("aidSQL_".$schemaName);
+					$sqli->select_db($schemaName);
 
 					if(array_key_exists("interactive",$this->_config)){
 
@@ -211,8 +210,10 @@
 	
 						}
 
-						if($this->createTable($mysqli,$schemaTableName,$schemaTableValues)!==TRUE){
-							throw(new \Exception("Couldnt create table $schemaTableName"));
+						$schemaTableName	=	$allPrefix.$schemaTableName;
+
+						if($this->createTable($sqli,$schemaTableName,$schemaTableValues)!==TRUE){
+							throw(new \Exception("Couldnt create table $schemaTableName ".$sqli->errno.':'.$sqli->error));
 						}
 
 						$attributes			=	$schemaTableValues["attributes"];
@@ -231,16 +232,13 @@
 
 						$count				=	$plugin->count($columns[0],$from);
 						$count				=	$count[0];
-						
+
+						var_dump($count);
+						die();
+						$this->log("FOUND $count registers in table $schemaTableName",0,"light_cyan");
+
 						if($count==0){
-
-							$this->log("No registers found on this table",0,"yellow");
 							continue;
-
-						}else{
-
-							$this->log("FOUND $count registers in table $schemaTableName",0,"light_cyan");
-
 						}
 
 						$parameters	=	$plugin->getInjectionParameters();
@@ -255,8 +253,8 @@
 							$values				=	$values[0];
 							$values				=	explode("\\-*/",$values);
 
-							if(!$this->insertRegisters($mysqli,$schemaTableName,$colInsert,$values)){
-								throw(new \Exception("Couldnt insert registers on $schemaTableName table!"));
+							if(!$this->insertRegisters($sqli,$schemaTableName,$colInsert,$values)){
+								throw(new \Exception("Couldnt insert registers on $schemaTableName table!".$sqli->errno.':'.$sqli->error));
 							}
 
 						}
@@ -273,24 +271,35 @@
 			public function createDatabase(\MySQLi &$sqli,$schemaName){
 
 				$sql	=	"CREATE DATABASE IF NOT EXISTS $schemaName";
-				$sqli->query($sql);
 				return $sqli->query($sql);
 
 			}
 
 			public function createTable(\MySQLi &$sqli,$tableName,Array $tableColumns){
 
-				$sql	=	"CREATE TABLE IF NOT EXISTS aidSQL_$tableName(";
+				$sql	=	NULL;
+				$sql	=	"CREATE TABLE IF NOT EXISTS $tableName(";
 
 				$columns	=	array();
+
 				foreach($tableColumns["columns"] as $columnName=>$columnSpecs){
 
 					$columns[]="$columnName ".$columnSpecs["type"];
 
 				}
-				$sql.=implode(',',$columns).')';
 
-				$truncate	=	"TRUNCATE TABLE aidSQL_$tableName";
+				//FIX
+				foreach($columns as &$column){
+
+					if(preg_match('/\([0-9]+/',$column)&&substr($column,-1)!=')'){
+						$column.=')';
+					}
+
+				}
+
+				$columns		=	implode(',',$columns);
+				$sql			=	"CREATE TABLE IF NOT EXISTS $tableName(".$columns.")";
+				$truncate	=	"TRUNCATE TABLE $tableName";
 				
 				return ($sqli->query($sql) && $sqli->query($truncate));
 
@@ -298,7 +307,7 @@
 
 			public function insertRegisters(\MySQLi &$sqli,$tableName,Array $columns,Array $registers){
 			
-				$sql		=	"INSERT INTO aidSQL_$tableName SET ";
+				$sql		=	"INSERT INTO $tableName SET ";
 				$result	=	@array_combine($columns,$registers);
 
 				foreach($registers as &$reg){

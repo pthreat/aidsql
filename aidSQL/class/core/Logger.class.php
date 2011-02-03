@@ -94,18 +94,6 @@
 			private $_append = NULL;
 	
 	
-			/**
-			* Solamente los mensajes que macheen con la tabla de frecuencia "_frequencies" seran mostrados
-			* Si la tabla de frequencias esta en cero, no se mostrara ningun mensaje
-			*/
-			/**
-			*Only messages matching with this "frequency table" will be shown, if the frequency table is 0, 
-			*no message will be shown.
-			*/
-	
-			private $_frequencies=NULL;
-	
-	
 			public function setFilename($filename=NULL){
 	
 			  if(!empty($this->_filename)){
@@ -150,36 +138,21 @@
 			* @method registraLog() registro los eventos en el archivo log creado por el constructor
 			*/
 	
-			public function log($msg=NULL,$type=0,$color=NULL,$logToFile=TRUE,$frequency=0,$method=NULL,$file=NULL,$line=NULL){
+			public function log($msg=NULL,$type=0,$color=NULL,$logToFile=TRUE){
 	
 				if(empty($msg)){
 					throw(new \Exception("Message to be logged cant be empty"));
 				}
 	
-				$check = $this->_frequencyCheck($frequency);
-	
-				if(!is_null($check) && $check==FALSE){
-					return FALSE;
-				}
 	
 				$date = ($this->_useLogDate) ? date("[d-M-Y / H:i:s]") : NULL;
 			
 				$code = NULL;
 	
-				if(!is_null($file)||!is_null($line)||!is_null($method)){
-	
-					$rand = md5(rand(0,time()));
-					$rand = substr($rand,0,4);
-					$code = "[CODE $rand]";
-	
-				}
-	
 				$type = ($this->_x11Info) ? $this->_infoType($type) : NULL;
-				
-	
 
 				$origMsg	=	$msg;	
-				$msg		= $this->_prepend.$type." ".$date.$msg.$this->_append;
+				$msg		=	$this->_prepend.$type." ".$date.$msg.$this->_append;
 	
 				if ($this->_echo) {
 
@@ -195,33 +168,9 @@
 	
 								echo $this->colors[$color].$code.$msg."\033[37m\r\n";
 	
-								if(!is_null($file)){
-									echo $this->colors["yellow"].$code."[DD]$date FILE: $file"."\033[37m\r\n";
-								}
-	
-								if(!is_null($line)){
-									echo $this->colors["yellow"].$code."[DD]$date LINE: $line"."\033[37m\r\n";
-								}
-	
-								if(!is_null($method)){
-									echo $this->colors["yellow"].$code."[DD]$date METHOD: $method"."\033[37m\r\n";
-								}
-	
 							} else {	//Log without coloring
 	
 								echo $code.$msg."\n";
-	
-								if(!is_null($file)){
-									echo $code."[DD]$date FILE: $file"."\033[37m\r\n";
-								}
-	
-								if(!is_null($line)){
-									echo $code."[DD]$date LINE: $line"."\033[37m\r\n";
-								}
-
-								if(!is_null($method)){
-									echo $code."[DD]$date METHOD: $method"."\033[37m\r\n";
-								}
 	
 							}
 	
@@ -278,26 +227,6 @@
 				}
 	
 				return strlen($msg);
-	
-			}
-	
-			private function _frequencyCheck($frequency=0){
-	
-				if($frequency==0){
-					return TRUE;
-				}
-	
-				if(is_null($this->_frequencies)){
-					return NULL;
-				}
-	
-				if(!in_array($frequency,$this->_frequencies)){
-	
-					return FALSE;
-	
-				}
-	
-				return TRUE;
 	
 			}
 	
@@ -388,43 +317,6 @@
 			public function setColors($bool=TRUE) {
 				$this->_colors=$bool;
 			}
-	
-			/**
-			*Adds an entire frequency range to be logged from x.0 to $end or to x.9 if no end was specified
-			*/
-	
-			public function addFrequencyRange($start,$end=NULL){
-	
-				$firstFrequency = $start;
-				$lastFrequency = $end;
-	
-				if(is_null($end)){
-					$lastFrequency = (float)$firstFrequency+0.9;
-				}
-			
-				while($firstFrequency<=$lastFrequency){
-					$this->addFrequency(sprintf("%.1f",$firstFrequency));
-					$firstFrequency+=0.1;
-				}
-
-			}
-
-			/**
-			*Adds a frequency to the frequency table
-			*/
-
-			public function addFrequency($frequency){
-				$this->_frequencies[]=sprintf("%.1f",$frequency);
-			}
-
-			/**
-			* @see Log::$_frequencies
-			*/
-	
-			public function getFrequencies() {
-				return $this->_frequencies;
-			}
-	
 
 			public function getEcho(){
 				return $this->_echo;
