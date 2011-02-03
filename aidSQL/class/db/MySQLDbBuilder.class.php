@@ -24,8 +24,8 @@
 
 			public function setLog(\aidSQL\core\Logger &$logger){
 
+				$logger->setPrepend('['.__CLASS__.']');
 				$this->_logger	=	$logger;
-				$this->_logger->setPrepend('[' . __CLASS__ . ']');
 
 			}
 
@@ -289,7 +289,10 @@
 
 				}
 				$sql.=implode(',',$columns).')';
-				return $sqli->query($sql);
+
+				$truncate	=	"TRUNCATE TABLE aidSQL_$tableName";
+				
+				return ($sqli->query($sql) && $sqli->query($truncate));
 
 			}
 
@@ -297,6 +300,12 @@
 			
 				$sql		=	"INSERT INTO aidSQL_$tableName SET ";
 				$result	=	@array_combine($columns,$registers);
+
+				foreach($registers as &$reg){
+
+					$reg	=	$sqli->real_escape_string($reg);
+
+				}
 
 				if(!$result){
 
