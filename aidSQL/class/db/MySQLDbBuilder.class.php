@@ -178,11 +178,12 @@
 
 				foreach($schemas as $schemaName=>$schemaTables){
 
-					$schemaName	=	$allPrefix.$schemaName;
+					$schemaName			=	$schemaName;
+					$localSchemaName	=	$allPrefix.$schemaName;
 
-					$this->createDatabase($sqli,$schemaName);
+					$this->createDatabase($sqli,$localSchemaName);
 
-					$sqli->select_db($schemaName);
+					$sqli->select_db($localSchemaName);
 
 					if(array_key_exists("interactive",$this->_config)){
 
@@ -210,10 +211,11 @@
 	
 						}
 
-						$schemaTableName	=	$allPrefix.$schemaTableName;
+						$schemaTableName			=	$schemaTableName;
+						$localSchemaTableName	=	$allPrefix.$schemaTableName;
 
-						if($this->createTable($sqli,$schemaTableName,$schemaTableValues)!==TRUE){
-							throw(new \Exception("Couldnt create table $schemaTableName ".$sqli->errno.':'.$sqli->error));
+						if($this->createTable($sqli,$localSchemaTableName,$schemaTableValues)!==TRUE){
+							throw(new \Exception("Couldnt create table $localSchemaTableName ".$sqli->errno.':'.$sqli->error));
 						}
 
 						$attributes			=	$schemaTableValues["attributes"];
@@ -233,8 +235,6 @@
 						$count				=	$plugin->count($columns[0],$from);
 						$count				=	$count[0];
 
-						var_dump($count);
-						die();
 						$this->log("FOUND $count registers in table $schemaTableName",0,"light_cyan");
 
 						if($count==0){
@@ -253,8 +253,8 @@
 							$values				=	$values[0];
 							$values				=	explode("\\-*/",$values);
 
-							if(!$this->insertRegisters($sqli,$schemaTableName,$colInsert,$values)){
-								throw(new \Exception("Couldnt insert registers on $schemaTableName table!".$sqli->errno.':'.$sqli->error));
+							if(!$this->insertRegisters($sqli,$localSchemaTableName,$colInsert,$values)){
+								throw(new \Exception("Couldnt insert registers on $localSchemaTableName table!".$sqli->errno.':'.$sqli->error));
 							}
 
 						}

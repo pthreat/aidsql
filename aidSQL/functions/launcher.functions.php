@@ -12,6 +12,37 @@
 		
 	}
 
+	function hasAcceptedDisclaimer(\aidSQL\core\Logger &$log){
+
+		if(!file_exists("DISCLAIMER.txt")){
+			$log->log("DISCLAIMER FILE NOT FOUND, CANNOT CONTINUE!",1,"red");
+			return FALSE;
+		}
+
+		if(!file_exists(".aidSQL_disclaimer_accepted")){
+
+			$log->log(file_get_contents("DISCLAIMER.txt"));
+			$log->log("DO YOU ACCEPT THIS DISCLAIMER?",0,"yellow");
+			$selection	=	interactive($log,array("YES I ACCEPT THIS DISCLAIMER", "NO I DONT ACCEPT THIS DISCLAIMER"));
+
+			if($selection[0]===0){
+
+				$fp	=	fopen(".aidSQL_disclaimer_accepted",'w');
+				fwrite($fp,'1');
+				fclose($fp);
+
+			}else{
+
+				return FALSE;
+
+			}
+
+		}
+
+		return TRUE;
+
+	}
+
 	function start(){
 
 		if(defined("__START")){
