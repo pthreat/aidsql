@@ -81,9 +81,13 @@
 				$url	=	new \aidSQL\core\Url($link);
 				$url->addRequestVariable($injection["requestVariable"],$injection["requestValue"]);
 
-				foreach($injection["requestVariables"] as $name=>$value){
+				if(isset($injection["requestVariables"])){
 
-					$url->addRequestVariable($name,$value);
+					foreach($injection["requestVariables"] as $name=>$value){
+
+						$url->addRequestVariable($name,$value);
+
+					}
 
 				}
 
@@ -216,17 +220,19 @@
 						$colInsert			=	$columns;
 						
 						foreach($columns as &$col){
+
 							$col="COALESCE($col,0)";
+
 						}
 
-						$select				=	implode(',0x7c,',$columns);
+						$fieldSeparator	=	"0x5c2d2a2f";
+						$select				=	implode(",$fieldSeparator,",$columns);
 						$from					=	$schemaName.'.'.$schemaTableName;
 
 						$count				=	$plugin->count($columns[0],$from);
-
-						$count				=	$count[0] - 1;
+						$count				=	$count[0];
 						
-						if($count==-1){
+						if($count==0){
 
 							$this->log("No registers found on this table",0,"yellow");
 							continue;
@@ -239,7 +245,7 @@
 
 						$parameters	=	$plugin->getInjectionParameters();
 
-						for($i=0;$i<=$count;$i++){
+						for($i=0;$i<$count;$i++){
 
 							$parameters["limit"]	=	array($i,1);
 
@@ -247,7 +253,7 @@
 
 							$values				=	$plugin->unionQuery($select,$from,array(),array());
 							$values				=	$values[0];
-							$values				=	explode('|',$values);
+							$values				=	explode("\\-*/",$values);
 
 							if(!$this->insertRegisters($mysqli,$schemaTableName,$colInsert,$values)){
 								throw(new \Exception("Couldnt insert registers on $schemaTableName table!"));
@@ -266,16 +272,15 @@
 
 			public function createDatabase(\MySQLi &$sqli,$schemaName){
 
-				$sql	=	"DROP DATABASE IF EXISTS $schemaName";
+				$sql	=	"CREATE DATABASE IF NOT EXISTS $schemaName";
 				$sqli->query($sql);
-				$sql	=	"CREATE DATABASE $schemaName";
 				return $sqli->query($sql);
 
 			}
 
 			public function createTable(\MySQLi &$sqli,$tableName,Array $tableColumns){
 
-				$sql	=	"CREATE TABLE $tableName(";
+				$sql	=	"CREATE TABLE IF NOT EXISTS aidSQL_$tableName(";
 
 				$columns	=	array();
 				foreach($tableColumns["columns"] as $columnName=>$columnSpecs){
@@ -284,23 +289,21 @@
 
 				}
 				$sql.=implode(',',$columns).')';
-
 				return $sqli->query($sql);
 
 			}
 
 			public function insertRegisters(\MySQLi &$sqli,$tableName,Array $columns,Array $registers){
 			
-				$sql		=	"INSERT INTO $tableName SET ";
-				$result	=	array_combine($columns,$registers);
+				$sql		=	"INSERT INTO aidSQL_$tableName SET ";
+				$result	=	@array_combine($columns,$registers);
 
 				if(!$result){
 
-					echo "COLUMNS\n";
-					var_dump($columns);
-					echo "REGISTERS\n";
-					var_dump($registers);
-					die();
+					//FIX ME
+					$registers	=	array_pad($registers,sizeof($columns),'-');
+					$result		=	array_combine($columns,$registers);
+					$this->log("WARNING! INSERTING PADDED VALUES, THIS DATA IS NOT ACCURATE!",1,"red");
 
 				}
 

@@ -575,7 +575,7 @@
 
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0),0x7c,PRIVILEGES";
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0)";
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -611,13 +611,10 @@
 					}
 
 					$column							=	explode('|',$column);
-
 					$tmpColName						=	(substr($column[0],0,1)==',')	?	substr($column[0],1)	:	$column[0];
-
 					$tmpCol["type"]				=	$column[1];
 					$tmpCol["key"]					=	$column[2];
 					$tmpCol["extra"]				=	$column[3];
-					$tmpCol["privilege"]			=	explode(',',$column[4]);
 
 					$retColumns[$tmpColName]	=	$tmpCol;
 
