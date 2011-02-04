@@ -18,7 +18,7 @@
 																		"someInjectionMethod"=>0	//Query count per injection method
 																);	
 			private		$_totalQueries				=	0;					//Total amount of queries
-			private		$_lastQuery					=	NULL;				//Contains the last executed query
+			protected	$_lastQuery					=	NULL;				//Contains the last executed query
 			private		$_queryResult				=	NULL;				//Contains the lastQuery Result
 																
 
@@ -292,7 +292,6 @@
 			}
 
 			protected function query($requestVariable,$injectionMethod=NULL){
-
 
 				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));

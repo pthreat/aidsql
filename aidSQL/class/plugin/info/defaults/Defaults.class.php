@@ -6,6 +6,8 @@
 
 			public function getInfo(){
 
+				$oldUrl	=	clone($this->_httpAdapter->getURL());
+
 				$return	=	new \aidSQL\plugin\info\InfoResult();
 	
 				$this->log("Trying to discover default directory locations ...",0,"light_cyan");
@@ -47,6 +49,8 @@
 					$this->log("No possible default writable web path was found :(",2,"yellow");
 
 				}
+
+				$this->_httpAdapter->setUrl($oldUrl);
 
 				return $return;
 

