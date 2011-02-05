@@ -270,11 +270,16 @@
 			$plugin->setShellName($shellName);
 			$plugin->setShellCode($shellCode);
 
-			$shellLocation	=	$plugin->getShell($pLoader,$crawler);
+			if($plugin->isRoot()){
 
-			if($shellLocation){
-				$log->log("Got shell! $shellLocation",0,"light_green");
+				$shellLocation	=	$plugin->getShell($pLoader,$crawler);
+
+				if($shellLocation){
+					$log->log("Got shell! $shellLocation",0,"light_green");
+				}
+
 			}
+
 
 		}else{
 
@@ -288,9 +293,8 @@
 		if($options["schema"]!=="none"){
 
 			$schemas		=	$plugin->getAllSchemas();
-			$parameters	=	array_keys($options);
 
-			if(in_array("save-xml",$parameters)){
+			if(array_key_exists("save-xml",$options)){
 
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"xml")){
 
@@ -301,11 +305,11 @@
 
 			}
 
-			if(in_array("save-log",$parameters)){
+			if(array_key_exists("save-log",$options)){
 
 				if($logDirectory=createLogDirectory($options,$url->getHost(),$log,"log")){
 
-					$txtLog	=	makeLog($plugin,$schemas,$log);
+					$txtLog	=	makeLog($plugin,$schemas,$shellLocation,$log);
 					file_put_contents($logDirectory.DIRECTORY_SEPARATOR.$url->getPage()."_console.log",$txtLog);
 
 				}
@@ -321,8 +325,6 @@
 			}
 
 		}
-
-		
 
 		return TRUE;
 

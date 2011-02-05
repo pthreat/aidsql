@@ -132,7 +132,7 @@
 	}
 
 
-	function makeLog(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas,\aidSQL\core\Logger &$log){
+	function makeLog(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas,$shell=NULL,\aidSQL\core\Logger &$log){
 
 		$url			=	$plugin->getHttpAdapter()->getUrl();
 		$affected	=	$plugin->getInjectionParameters();
@@ -142,7 +142,6 @@
 		$txtLog	.=	"------------------------------------\n";
 		$txtLog	.=	"PLUGIN NAME\t\t:\t".$plugin->getPluginName()."\n";
 		$txtLog	.=	"PLUGIN AUTHOR\t\t:\t".$plugin->getPluginAuthor()."\n";
-		//$txtLog	.=	"PLUGIN METHOD\t\t:\t".$affected["method"]."\n";
 		
 		$link					=	$url->getUrlAsString(FALSE);
 		$requestVariables	=	$url->getQueryAsArray();
@@ -154,9 +153,14 @@
 
 		}
 
-		//$txtLog	.=	"AFFECTED VARIABLE\t:\t".$affected["variable"]."\n";
 		$txtLog	.=	"REQUEST VARIABLES\t:\t".implode(',',$reqVars)."\n";
 		$txtLog	.=	"VULNERABLE LINK\t\t:\t".$url->getUrlAsString()."\n";
+
+		if(!empty($shell)){
+	
+			$txtLog.="GOT SHELL\t\t:\t$shell\n";
+
+		}
 
 		foreach($schemas as $schema){
 
