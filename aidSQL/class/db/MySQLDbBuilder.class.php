@@ -291,8 +291,9 @@
 				//FIX
 				foreach($columns as &$column){
 
-					if(preg_match('/\([0-9]+/',$column)&&substr($column,-1)!=')'){
+					if(preg_match('/\([0-9]+$/',$column)&&substr($column,-1)!=')'){
 						$column.=')';
+						die($column);
 					}
 
 				}
