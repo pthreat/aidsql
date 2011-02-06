@@ -1,0 +1,3 @@
+<?php
+	echo urldecode($_SERVER["argv"][1])."\n";
+?>
