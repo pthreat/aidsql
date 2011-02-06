@@ -822,6 +822,8 @@
 
 					}
 
+					$this->_httpAdapter->setUrl($restoreUrl);
+
 				}
 
 

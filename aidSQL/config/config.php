@@ -132,7 +132,6 @@
 		"log-path"=>array(
 		),
 		"save-log"=>array(
-			"novalue"=>TRUE
 		),
 		"log-all"=>array(
 			"novalue" => TRUE,
@@ -141,7 +140,6 @@
 		"save-html"=>array(
 		),
 		"save-xml"=>array(
-			"novalue"=>TRUE
 		),
 		"plugin-phpinfo"=>array(
 		),
