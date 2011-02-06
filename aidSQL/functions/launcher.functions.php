@@ -67,35 +67,39 @@
 		$log->setX11Info(FALSE);
 		$log->setPrepend("");
 	
-		$log->log("\nGENERAL\n");	
+		$log->log("\nGENERAL\n",0,"light_cyan");	
 		$log->log("--url\t\t\t\t<url> Use this URL to perform injection tests",0,"white");
 		$log->log("--immediate-mode\t\tQuit as soon as it finds a vulnerable spot (default yes)",0,"white");
-		$log->log("--verbose\t\t 0 => normal, 1 => verbose, 2 => more verbose",0,"white");
-		$log->log("--list-links\t\t=> Will cause aidSQL only to list found links on the given page",0,"white");
-		$log->log("--no-shell\t\t Dont attempt to get a shell",0,"white");
-		$log->log("--no-schema\t\t Dont get database schema",0,"white");
-		$log->log("--partial-schema\t\t Dont get fields from all tables in the database schema",0,"white");
+		$log->log("--verbose\t\t\t0 => normal, 1 => verbose, 2 => more verbose",0,"white");
+		$log->log("--list-links\t\t\tWill cause aidSQL only to list found links on the given page (combinable with interactive)",0,"white");
+		$log->log("--no-shell\t\t\tDont attempt to get a shell",0,"white");
+		$log->log("--shell-code\t\t\tSpecify your own shell code",0,"white");
+		$log->log("--shell-name\t\t\tSpecify your own shell name",0,"white");
+		$log->log("--no-schema\t\t\tDont get database schemas",0,"white");
+		$log->log("--partial-schema\t\tDont get fields from all tables in the database schema",0,"white");
 		$log->log("--decode-requests\t\tShow decoded requests",0,"white");
+		$log->log("--wanted-schemas\t\t{current} = Get the current schema, {all} = get All, db1,db2,db3 your own choices",0,"white");
+		$log->log("--makedb\t\t\tPath to aidSQL XML generated file (combinable with interactive)",0,"white");
 
-		$log->log("\nGOOGLING\n");
+		$log->log("\nGOOGLING\n",0,"light_cyan");	
 		$log->log("--google\t\t\t<search term> Just Google it!",0,"white");
 		$log->log("--google-language\t\tsearch in this language (default \"en\") accepts <es,de,it> amongst others",0,"white");
 		$log->log("--google-max-results\t\tLimit the search to a maximum of results others",0,"white");
 		$log->log("--google-offset\t\tOffset results (Use with care you can end with no sites)",0,"white");
 		$log->log("--google-shuffle\t\tShuffle search results (default yes)",0,"white");
 
-		$log->log("\nLOGGING\n");
+		$log->log("\nLOGGING\n",0,"light_cyan");	
 		$log->log("--save-log\t\t\tFile where to dump results",0,"white");
 		$log->log("--save-xml\t\t\tSave obtained schemas in XML format",0,"white");
 		$log->log("--log-prepend-date\t\tPrepend date to log (default 0)",0,"white");
 		$log->log("--colors\t\t\tActivate / Deactivate colors (default 1)",0,"white");
 
-		$log->log("\nPLUGINS\n");
+		$log->log("\nPLUGINS\n",0,"light_cyan");	
 		$log->log("--list-plugins\t\t\tReturn a list of available plugins and their types",0,"white");
 		$log->log("--sqli-plugins\t\t\tUse these plugins for sqli (default all)",0,"white");
 		$log->log("--help-<type>-<name>\t\tIf you need help about a certain plugin",0,"white");
 
-		$log->log("\nHTTP RELATED\n");
+		$log->log("\nHTTP RELATED\n",0,"light_cyan");	
 		$log->log("--http-method\t\t\tPOST or GET (default GET)",0,"white");
 		$log->log("--http-adapter\t\t\tSwitch http adapter (default Ecurl) ",0,"white");
 		$log->log("--connect-timeout\t\tConnect timeout for A ",0,"white");
@@ -103,7 +107,7 @@
 		$log->log("--url-var-char\t\t\t(default &)",0,"white");
 		$log->log("--url-equality-char\t\t(default =)",0,"white");
 		$log->log("--url-path-char\t\t(default /)",0,"white");
-		$log->log("--request-interval\t\tHTTP Request Interval (in seconds)",0,"white");
+		$log->log("--request-interval\t\tHTTP Request Interval (in microseconds)",0,"white");
 		$log->log("--follow-redirects\t\tFollow HTTP 302 (default yes)",0,"white");
 		$log->log("--proxy-server\t\t\tHost or IP of the proxy server",0,"white");
 		$log->log("--proxy-user\t\t\tUsername for the proxy server (if requires authentication)",0,"white");
@@ -112,7 +116,7 @@
 		$log->log("--proxy-type\t\t\tProxy type [BASIC | NTLM] (default basic) ",0,"white");
 		$log->log("--proxy-tunnel\t\t\tUse CONNECT method (default 0) ",0,"white");
 
-		$log->log("\nSITE CRAWL\n");
+		$log->log("\nSITE CRAWL\n",0,"light_cyan");
 		$log->log("--crawl\t\t\t<depth> How many levels do you want the crawler to go (default 0)",0,"white");
 		$log->log("--no-crawl\t\t\tDont crawl hrefs (default yes)",0,"white");
 		$log->log("--omit-sites\t\t\tRegex for omitting certain sites when googling",0,"white");
@@ -203,7 +207,7 @@
 		$log->log($banner,0,"red");
 		$banner="\n\tSQL INJECTION DETECTION TOOL\n";
 		$log->log($banner,0,"white");
-		$banner="\tBy Juan Stange <jpfstange@gmail.com>\n\n\n";
+		$banner="\tBy Juan Stange <lynxsec@gmail.com>\n\n\n";
 		$log->log($banner,0,"light_green");
 
 		$log->setX11Info(TRUE);
