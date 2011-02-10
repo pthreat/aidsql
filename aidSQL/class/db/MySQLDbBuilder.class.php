@@ -129,7 +129,7 @@
 
 						foreach($columns as $column){
 
-							$colName	=	$column->getAttribute("name");
+							$colName		=	$column->getAttribute("name");
 							$columnsArray[$colName]	=	array();
 							$colChilds	=	$column->childNodes;
 							
@@ -144,8 +144,6 @@
 						$schemasArray[$schemaName][$tableName]	=	$tablesArray;
 
 					}
-
-					
 
 				}
 
@@ -311,12 +309,6 @@
 				$sql		=	"INSERT INTO $tableName SET ";
 				$result	=	@array_combine($columns,$registers);
 
-				foreach($registers as &$reg){
-
-					$reg	=	$sqli->real_escape_string($reg);
-
-				}
-
 				if(!$result){
 
 					//FIX ME
@@ -327,7 +319,7 @@
 				}
 
 				foreach($result as $colName=>$colVal){
-					$sql.="$colName='$colVal',";
+					$sql.="$colName='".$sqli->real_escape_string($colVal)."',";
 				}
 
 				$sql=substr($sql,0,-1);

@@ -524,12 +524,12 @@
 				$dbSchema->setDbUser($user);
 				$dbSchema->setDbVersion($version);
 	
-				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,1,0)";
+				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,0x6e,0x79)";
 				$from		=	"information_schema.tables";
 
 				$where	=	array("table_schema=".\String::hexEncode($database));
 
-				$tables	=	$this->unionQuery("GROUP_CONCAT($select)",$from,$where);
+				$tables	=	$this->unionQuery("GROUP_CONCAT($select SEPARATOR 0x25)",$from,$where);
 				$tables	=	$tables[0];
 				
 			
@@ -542,7 +542,25 @@
 
 				}else{
 
-					$tables	=	explode(',',$tables);
+					$tables	=	explode('%',$tables);
+
+					foreach($tables as $table){
+
+						$test	=	explode('|',$table);
+
+						if(!isset($test[0])||!isset($test[1])||!isset($test[2])||!isset($test[3])||!isset($test[4])){
+
+							$this->log("DETECTED ERRONEOUS TABLE FETCHING WITH GROUP_CONCAT",1,"red");
+							$count	=	$this->unionQuery("COUNT(TABLE_NAME)",$from,$where);	
+							$count	=	$count[0];
+
+							$tables	=	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
+							break;
+
+						}
+
+					}
+
 
 				}
 
@@ -600,8 +618,8 @@
 
 				$this->log("Fetching table \"$table\" columns ...",0,"white");
 
-				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0)".
-														",0x7c,IF(EXTRA,EXTRA,0)";
+				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0x6e)".
+														",0x7c,IF(EXTRA,EXTRA,0x6e)";
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -627,6 +645,27 @@
 				}else{
 
 					$columns		=	explode('%',$columns);
+
+					//Check that we dont get any truncated data 
+
+					foreach($columns as $column){
+
+						$test	=	explode('|',$column);
+
+						if(!isset($test[0])||!isset($test[1])||!isset($test[2])||!isset($test[3])){
+
+							$this->log("DETECTED ERRONEOUS COLUMN FETCHING WITH GROUP_CONCAT",1,"red");
+							$count	=	$this->unionQuery("COUNT(COLUMN_NAME)",$from,$where);	
+							$count	=	$count[0];
+
+							//$select	=	substr($select,0,(strlen($separator)*-1));
+							$columns =	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
+
+							break;
+
+						}
+
+					}
 					
 				}
 

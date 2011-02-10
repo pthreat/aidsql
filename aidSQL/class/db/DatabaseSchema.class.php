@@ -11,10 +11,11 @@
 			private	$_dbDataDir		=	NULL;
 			private	$_tables			=	array();
 
-			public function addTable($table,Array $description=array(),Array $fields=array()){
+			public function addTable($table,Array $description=array(),Array $fields=array(),$rowCount=0){
 
 				$this->_tables[$table]["fields"]			=	$fields;
 				$this->_tables[$table]["description"]	=	$description;
+				$this->_tables[$table]["count"]			=	$rowCount;
 
 			}
 
