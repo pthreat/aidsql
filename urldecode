@@ -1,3 +1,4 @@
+#!/usr/bin/php -q
 <?php
 	echo urldecode($_SERVER["argv"][1])."\n";
 ?>
