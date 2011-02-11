@@ -1,0 +1,2 @@
+      RewriteEngine On
+      RewriteRule ^(.*)/(.*)/(.*) index.php?category=$2&subcat=$3
