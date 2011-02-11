@@ -70,6 +70,7 @@
 		$log->log("\nGENERAL\n",0,"light_cyan");	
 		$log->log("--url\t\t\t\t<url> Use this URL to perform injection tests",0,"white");
 		$log->log("--immediate-mode\t\tQuit as soon as it finds a vulnerable spot (default yes)",0,"white");
+		$log->log("--ignore-variables\t\tComma delimited list of variables to be ignored",0,"white");
 		$log->log("--verbose\t\t\t0 => normal, 1 => verbose, 2 => more verbose",0,"white");
 		$log->log("--list-links\t\t\tWill cause aidSQL only to list found links on the given page (combinable with interactive)",0,"white");
 		$log->log("--no-shell\t\t\tDont attempt to get a shell",0,"white");

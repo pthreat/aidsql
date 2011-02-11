@@ -6,6 +6,8 @@
 			"alias"=>'u',
 			"required"=>TRUE
 		),
+		"rewrite-vars"=>array(
+		),
 		"sqli-plugins"=>array(
 		),
 		"info-plugins"=>array(
