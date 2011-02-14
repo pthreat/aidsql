@@ -10,6 +10,7 @@
 			private	$_equalityOperator	=	'=';
 			private	$_queryIndicator		=	'?';
 			private	$_pathSeparator		=	'/';
+			private	$_restorePath			=	array();
 
 			public function __construct ($url=NULL){
 
@@ -19,6 +20,64 @@
 
 			public function getVariableDelimiter(){
 				return $this->_varDelimiter;
+			}
+
+			public function changePath($matchPath=NULL,$newPath=NULL){
+
+				if(empty($matchPath)||empty($newPath)){
+					throw(new \Exception("Must enter a path and a new value to assign to the old path when using changePath!"));
+				}
+
+				$urlPaths	=	$this->getPathAsArray();
+
+				if(!empty($this->_url["page"])){
+					$urlPaths[]	=	$this->_url["page"];
+				}
+
+
+				if(!in_array($matchPath,$urlPaths)){	
+					throw(new \Exception("Path $path wasnt found in this url"));
+				}
+
+				foreach($urlPaths as $index=>&$path){
+
+					if($path==$matchPath){
+
+						$this->_restorePath[]	=	array("index"=>$index,"path"=>$path);
+						$path=$newPath;
+
+					}
+
+				}
+
+				$this->setPathArray($urlPaths);
+
+			}
+
+			public function restorePath($position=NULL){
+	
+				$urlPaths	=	$this->getPathAsArray();
+
+				foreach($this->_restorePath as $pathInfo){
+
+					if(is_int($position)){
+						if($pathInfo["index"]==$position){
+							$urlPaths[$position]	=	$pathInfo["path"];
+						}
+					}else{
+						$urlPaths[$pathInfo["index"]]	=	$pathInfo["path"];
+					}
+	
+				}
+
+				$this->setPathArray($urlPaths);
+
+			}
+
+			public function setPathArray(Array $pathArray){
+
+				$this->_url["path"]	=	implode($this->_pathSeparator,$pathArray);
+
 			}
 
 			public function parse($url=NULL){
@@ -268,6 +327,14 @@
 
 			public function getPath(){
 				return $this->_url["path"];
+			}
+
+			public function getPathAsArray(){
+
+				$paths	=	explode($this->_pathSeparator,$this->_url["path"]);
+
+				return $paths;
+
 			}
 
 			public function getPage(){
