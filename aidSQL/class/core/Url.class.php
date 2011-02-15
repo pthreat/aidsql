@@ -28,28 +28,39 @@
 					throw(new \Exception("Must enter a path and a new value to assign to the old path when using changePath!"));
 				}
 
-				$urlPaths	=	$this->getPathAsArray();
-
-				if(!empty($this->_url["page"])){
-					$urlPaths[]	=	$this->_url["page"];
-				}
-
+				$urlPaths	=	$this->getPathAsArray(TRUE);
 
 				if(!in_array($matchPath,$urlPaths)){	
-					throw(new \Exception("Path $path wasnt found in this url"));
+					throw(new \Exception("Path $matchPath wasnt found in this url"));
 				}
 
 				foreach($urlPaths as $index=>&$path){
 
-					if($path==$matchPath){
+					if($path == $matchPath){
 
-						$this->_restorePath[]	=	array("index"=>$index,"path"=>$path);
-						$path=$newPath;
+						$restorePathExists	=	FALSE;
+
+						foreach($this->_restorePath as $restore){
+
+							if(($restore["index"]==$index) && ($path==$matchPath)){
+								$restorePathExists	=	TRUE;
+							}
+
+						}
+
+						if(!$restorePathExists){
+
+							$this->_restorePath[]	=	array("index"=>$index,"path"=>$path);
+
+						}
+
+						$path	=	$newPath;
 
 					}
 
 				}
 
+				var_dump($urlPaths);
 				$this->setPathArray($urlPaths);
 
 			}
@@ -93,59 +104,85 @@
 				$url	= trim($url);
 				$url	= rtrim($url,'/');
 
-				$parsedUrl=array();
 
-				if(!preg_match("#://#",$url)){
+				$parsedUrl	=	array(
 
-					$scheme	=	"http";
-					$url		=	$scheme."://".$url;
+					"fullUrl"		=>	NULL,
+					"scheme"			=>	"http",
+					"host"			=>	NULL,
+					"path"			=>	'/',
+					"page"			=>	NULL,
+					"is_relative"	=>	NULL
+					
+				);
 
-				}else{
-
-					$scheme	=	substr($url,0,strpos($url,":"));
-
-				}
+				//FULL URL
+				/////////////////////////////////////////////////
 
 				$parsedUrl["fullUrl"]	=	$url;
-				$parsedUrl["scheme"]		=	$scheme;
 
-				$host	=	substr($url,strlen($scheme)+3);
+				//SCHEME PARSING
+				/////////////////////////////////////////////////
 
-				if(strpos($host,"/")!==FALSE){
+				if(preg_match("#://#",$url)){
 
-					$host	=	substr($host,0,strpos($host,"/"));
+					$parsedUrl["scheme"]	=	substr($url,0,strpos($url,":"));
+
+				}
+
+				$host							=	substr($url,strlen($parsedUrl["scheme"])+3);
+
+				//HOST PARSING
+				/////////////////////////////////////////////////
+
+				if(($pos=strpos($host,$this->_pathSeparator))!==FALSE){	// '/'
+
+					$parsedUrl["host"]	=	substr($host,0,$pos);
+
+				}elseif($pos = strpos($host,$this->_queryIndicator)){		// '?'
+
+					$parsedUrl["host"]	=	substr($host,strlen($parsedUrl["scheme"])+3,$pos);
 
 				}else{
 
-					$host	=	substr($url,strlen($scheme)+3);
+					$host						=	trim($host);						//Just a URL without parameters;
+					$parsedUrl["host"]	=	$host;
+					return $this->_url	=	$parsedUrl;
 
 				}
 
-				if(strpos($host,$this->_queryIndicator)){
-					$host	=	substr($host,0,strpos($host,$this->_queryIndicator));
-				}
+				//PATH PARSING
+				/////////////////////////////////////////////////
 
-				$parsedUrl["host"]		=	$host;
+				$length					=	strlen($parsedUrl["scheme"])+3+strlen($parsedUrl["host"]);
+				$parsedUrl["path"]	=	substr($url,$length);
 
-				$path	=	substr($url,strlen($scheme)+3+strlen($host));
 
-				if(strrpos($path,"/")!==FALSE){
+				//PAGE PARSING
+				/////////////////////////////////////////////////
 
-					$path = substr($path,0,strrpos($path,"/")+1);
+				$lastPathPiece	=	substr($parsedUrl["path"],strrpos($parsedUrl["path"],$this->_pathSeparator)+1);
+				$lastPathPiece	=	substr($lastPathPiece,0,strpos($lastPathPiece,$this->_queryIndicator));
 
+				if($pos = strrpos($lastPathPiece,'.')){
+
+					$pageExtension	=	substr($lastPathPiece,$pos+1);
+					
+					if(strlen($pageExtension)>=1 && $pageExtension!='.'){
+
+						$parsedUrl["page"]	=	$lastPathPiece;
+
+						//MORE PATH PARSING
+						$parsedUrl["path"]	=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$parsedUrl["page"]));
+
+					}
+					
 				}else{
 
-					$path	=	"/";
+					$parsedUrl["page"]	=	NULL;
 
 				}
 
-				$parsedUrl["path"]	=	$path;
-
-				if(strrpos($path,$this->_queryIndicator)!==FALSE){
-					$parsedUrl["path"]	=	substr($path,0,strpos($path,$this->_queryIndicator));
-				}
-
-				$parsedUrl["page"]	=	basename($url);
 
 				if(strpos($url,$this->_queryIndicator)==FALSE){
 
@@ -154,25 +191,27 @@
 				}else{
 
 					$parsedUrl["query"]	=	substr($url,strpos($url,$this->_queryIndicator)+1);
-
 					$this->addRequestVariables($this->queryStringToArray($parsedUrl["query"]));
 
-					$parsedUrl["page"]	=	substr($parsedUrl["page"],0,strpos($parsedUrl["page"],$this->_queryIndicator));
-
 				}
 
-				if($parsedUrl["page"]==$parsedUrl["host"]){
-					$parsedUrl["page"]="";
-				}
+				//Checkout if its a relative path
+				
+				if(preg_match("/\.\./",$parsedUrl["path"])){
 
-				if(preg_match("#..#",$parsedUrl["path"])){
-					$parsedUrl["path"]		=	$this->parseRelativePath($parsedUrl["path"]);
+					$parsedUrl["path"]			=	$this->parseRelativePath($parsedUrl["path"]);
 					$parsedUrl["is_relative"]	=	TRUE;
+
 				}else{
+
 					$parsedUrl["is_relative"]	=	FALSE;
+
 				}
 
 				$this->_url	=	$parsedUrl;
+
+				var_dump($parsedUrl);
+				die();
 
 			}
 
@@ -325,13 +364,35 @@
 				return $this->_url["host"];
 			}
 
-			public function getPath(){
+			public function getPath($full=FALSE){
+
+				if($full){
+
+					if(!empty($this->_url["page"])){
+
+						return $this->_url["path"].$this->_pathSeparator.$this->_url["page"];
+
+					}else{
+
+						return $this->_url["path"];
+
+					}
+
+				}
+
 				return $this->_url["path"];
+
 			}
 
-			public function getPathAsArray(){
+			public function getPathAsArray($full=FALSE){
 
 				$paths	=	explode($this->_pathSeparator,$this->_url["path"]);
+
+				if($full&&!empty($this->_url["page"])){
+
+					$paths[]	=	$this->_url["page"];
+
+				}
 
 				return $paths;
 
@@ -348,14 +409,13 @@
 			public function getUrlAsString($parameters=TRUE){
 
 				$full	=	$this->_url["scheme"]."://".$this->_url["host"];
-				$path	=	(isset($this->_url["path"]))	?	'/'.trim($this->_url["path"],'/') : '/';
-				$page	=	(isset($this->_url["page"]))	?	'/'.trim($this->_url["page"],'/') : NULL;
+				$path	=	(isset($this->_url["path"]))	?	'/'.trim($this->getPath(TRUE),'/') : '/';
 
 				if($path=='/'){
 					$path=NULL;
 				}
 
-				$full	.=	$path.$page;
+				$full	.=	$path;
 
 				if(sizeof($this->_variables)&&$parameters){
 
@@ -377,21 +437,40 @@
 
 			private function parseRelativePath($path=NULL){
 
-				$path				=	"/".trim($path,"/");
-				$token			=	strtok($path,"/");
-				$ascendCount	=	0;
-				$cleanPath		=	array();
-				$count			=	0;
+				$pathArray			=	explode($this->_pathSeparator,$path);
+				$cleanPath			=	array();
+				$count				=	0;
+				$goBackPositions	=	array();
 
-				while($token!==FALSE){
+				foreach($pathArray as $index=>$path){
 
-					if($token!==".."){
-						$cleanPath[$count++]=$token;
+					if(empty($path)){
+						continue;
 					}
 
-					$token = strtok("/");
+					if($path==".."){
+						$goBackPositions[]	=	$index;
+					}
 
 				}
+
+				var_dump($goBackPositions);
+
+				foreach($goBackPositions as $goBack){
+
+					unset($pathArray[$goBack]);
+
+					if(isset($pathArray[$goBack-1])){
+
+						unset($pathArray[$goBack-1]);
+						//resort array keys
+
+					}
+
+				}
+
+				var_dump($pathArray);
+				die();
 
 				if(!sizeof($cleanPath)){
 
