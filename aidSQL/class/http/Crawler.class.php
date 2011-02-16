@@ -604,11 +604,9 @@
 					$method	=	"GET";
 				}
 
-				$_empty	=	$url->getPage();
+				$page	=	$url->getPage();
 
-				if(!empty($_empty)){
-
-					$page	=	$url->getPath().$url->getPathSeparator().$url->getPage();
+				if(!empty($page)){
 
 					if($this->isOmittedPage($page)){
 
@@ -779,7 +777,7 @@
 
 						foreach($images as $img){
 
-							$file		=	$img->getPath().$img->getPathSeparator().$img->getPage();
+							$file		=	$img->getPath();
 
 							if ($this->addFile($this->whatIs($file))){
 								$this->log("Add file $file",0,"light_purple");
@@ -827,7 +825,7 @@
 
 					foreach($urls as $key=>$_url){
 
-						$file		=	trim($_url->getPath().$_url->getPathSeparator().$_url->getPage(),'/');
+						$file		=	trim($_url->getPath(),'/');
 						$file		=	$this->whatIs($file);
 
 						if(is_array($file)){
