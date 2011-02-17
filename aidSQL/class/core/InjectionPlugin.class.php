@@ -48,36 +48,36 @@
 				$url						=	$adapter->getUrl();
 				$requestVariables		=	$url->getQueryAsArray();
 
-				if(!sizeof($requestVariables)){
-
-					throw(new \Exception("Unable to perform injection without any request variables set in the http adapter!"));
-
-				}
-
 				$this->setConfig($config);
 
-				//Order Variables in the request like you want
+				if(sizeof($requestVariables)){ //url's that have query variables on them ?a=1&b=5, etc
 
-				if(array_key_exists("numeric-only",$config)){
+					//Order Variables in the request like you want
 
-					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric");
-					$url->addRequestVariables($requestVariables);
+					if(array_key_exists("numeric-only",$config)){
 
-				}elseif(array_key_exists("strings-only",$config)){
+						$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric");
+						$url->addRequestVariables($requestVariables);
 
-					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"string");
-					$url->addRequestVariables($requestVariables);
+					}elseif(array_key_exists("strings-only",$config)){
 
-				}elseif(array_key_exists("numeric-first",$config)){
+						$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"string");
+						$url->addRequestVariables($requestVariables);
 
-					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric-first");
-					$url->addRequestVariables($requestVariables);
+					}elseif(array_key_exists("numeric-first",$config)){
+
+						$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"numeric-first");
+						$url->addRequestVariables($requestVariables);
 						
-				}elseif(array_key_exists("strings-first",$config)){
-					$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"strings-first");
-					$url->addRequestVariables($requestVariables);
+					}elseif(array_key_exists("strings-first",$config)){
 
-				}
+						$requestVariables	=	$this->separateRequestVariablesByType($requestVariables,"strings-first");
+						$url->addRequestVariables($requestVariables);
+
+					}
+
+
+				}	//else we are probably dealing with a mod_rewritten url
 
 				$adapter->setUrl($url);
 

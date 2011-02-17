@@ -28,7 +28,7 @@
 					throw(new \Exception("Must enter a path and a new value to assign to the old path when using changePath!"));
 				}
 
-				$urlPaths	=	$this->getPathAsArray(TRUE);
+				$urlPaths	=	$this->getPathAsArray();
 
 				if(!in_array($matchPath,$urlPaths)){
 					throw(new \Exception("Path $matchPath wasnt found in this url"));
@@ -38,7 +38,7 @@
 
 					if($path == $matchPath){
 
-						$this->_restorePath[]	=	array("index"=>$index,"path"=>$path);
+						$this->_restorePath[]	=	array("index"=>$index,"path"=>$matchPath);
 
 						$path	=	$newPath;
 
@@ -52,9 +52,8 @@
 
 			public function restorePath($position=NULL){
 	
-				$urlPaths	=	$this->getPathAsArray(TRUE);
-				var_dump($urlPaths);
-				die();
+				$urlPaths	=	$this->getPathAsArray();
+
 				foreach($this->_restorePath as $pathInfo){
 
 					if(is_int($position)){
@@ -136,7 +135,6 @@
 
 					$parsedUrl["host"]	=	trim($url);
 					return $this->_url	=	$parsedUrl;
-
 				}
 
 				//PATH PARSING
@@ -145,13 +143,22 @@
 				$length					=	strlen($parsedUrl["host"]);
 				$parsedUrl["path"]	=	substr($url,$length);
 				$dirtyPath				=	$parsedUrl["path"];
-				$parsedUrl["path"]	=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$this->_queryIndicator));
+
+				$tmpPath	=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$this->_queryIndicator));
+
+				if(!empty($tmpPath)){
+					$parsedUrl["path"]	=	$tmpPath;
+				}
 
 				//PAGE PARSING
 				/////////////////////////////////////////////////
 
-				$lastPathPiece	=	substr($dirtyPath,strrpos($dirtyPath,$this->_pathSeparator)+1);
-				$lastPathPiece	=	substr($lastPathPiece,0,strpos($lastPathPiece,$this->_queryIndicator));
+				$lastPathPiece				=	substr($dirtyPath,strrpos($dirtyPath,$this->_pathSeparator)+1);
+				$tmpLastPathPieceCheck	=	substr($lastPathPiece,0,strpos($lastPathPiece,$this->_queryIndicator));
+
+				if(!empty($tmpLastPathPieceCheck)){
+					$lastPathPiece	=	$tmpLastPathPieceCheck;
+				}
 
 				if($pos = strrpos($lastPathPiece,'.')){
 
@@ -349,7 +356,11 @@
 				return $this->_url["host"];
 			}
 
-			public function getPath(){
+			public function getPath($withoutFile=FALSE){
+
+				if($withoutFile&&!empty($this->_url["page"])){
+					return substr($this->_url["path"],0,strlen($this->_url["page"])*-1);
+				}
 
 				return $this->_url["path"];
 
@@ -357,15 +368,18 @@
 
 			public function getPathAsArray(){
 
-				$paths	=	explode($this->_pathSeparator,$this->_url["path"]);
+				$paths		=	explode($this->_pathSeparator,$this->_url["path"]);
+				$cleanPath	=	array();
 
 				foreach($paths as $key=>$value){
-					if(empty($value)){
-						unset($paths[$key]);
+
+					if(!empty($value)){
+						$cleanPath[]	=	$value;
 					}
+
 				}
 
-				return $paths;
+				return $cleanPath;
 
 			}
 

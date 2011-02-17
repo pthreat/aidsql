@@ -144,6 +144,13 @@
 
 				$requestVariables	=	$this->_httpAdapter->getUrl()->getQueryAsArray();
 
+				if(!sizeof($requestVariables)){
+					echo $this->_httpAdapter->getUrl();
+					$requestVariables	=	$this->_httpAdapter->getUrl()->getPathAsArray();
+					var_dump($requestVariables);
+					die();
+				}
+
 				foreach($requestVariables as $requestVariable=>$requestVariableValue){
 
 					if($this->isIgnoredRequestVariable($requestVariable,$requestVariableValue)){

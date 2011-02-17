@@ -252,7 +252,7 @@
 	}
 
 	function isVulnerableToSQLInjection(&$cmdParser,&$httpAdapter,&$crawler,&$log,&$pLoader){
-
+		
 		$aidSQL	=	new \aidSQL\core\Runner($cmdParser,$httpAdapter,$crawler,$log,$pLoader);
 		$plugin	=	$aidSQL->isVulnerableToSQLInjection();
 		$options	=	$cmdParser->getParsedOptions();

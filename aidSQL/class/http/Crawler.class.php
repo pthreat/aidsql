@@ -28,7 +28,6 @@
 				$httpAdapter->setUrl($url);
 				
 				$this->_urlList[]		=	array("url"=>$url,"method"=>$httpAdapter->getMethod());
-
 				$this->_host			=	$url;
 				$this->_httpAdapter	=	$httpAdapter;
 				$this->setLog($log);
@@ -448,7 +447,7 @@
 					//Means that the uri is relative to the path
 					//We *have* to normalize the url passing also the host 
 
-					$path	=	(dirname($uri)=='.')	? $path.$this->_host->getPathSeparator() : $this->_host->getPath().$this->_host->getPathSeparator();
+					$path	=	(dirname($uri)=='.')	? $path.$this->_host->getPathSeparator() : $this->_host->getPath(TRUE).$this->_host->getPathSeparator();
 
 					$url				=	new \aidSQL\core\Url($this->_host->getScheme()."://"				.
 																	$this->_host->getHost()							.
@@ -489,7 +488,7 @@
 
 				if(isset($form["attributes"]["action"])){
 
-					$action	=	$this->makeUrl($form["attributes"]["action"],$url->getPath())->getUrlAsString();
+					$action	=	$this->makeUrl($form["attributes"]["action"],$url->getPath(TRUE))->getUrlAsString();
 
 				}else{
 
@@ -713,9 +712,9 @@
 				}
 
 
-				if($this->isOmittedPath($url->getPath())){
+				if($this->isOmittedPath($url->getPath(TRUE))){
 
-					$this->log('*'.$url->getPath()." is omitted will NOT fetch content from here!");
+					$this->log('*'.$url->getPath(TRUE)." is omitted will NOT fetch content from here!");
 					return FALSE;
 
 				}
@@ -739,9 +738,9 @@
 
 					}
 
-					if($this->detectModRewriteFuckUp($url->getPath())){
+					if($this->detectModRewriteFuckUp($url->getPath(TRUE))){
 
-						$this->log("Possible url rewrite Fuck up detected in ".$url->getPath());
+						$this->log("Possible url rewrite Fuck up detected in ".$url->getPath(TRUE));
 						return FALSE;
 
 					}
@@ -766,7 +765,7 @@
 																	//certain DocumentRoot locations in order to get a shell.
 																	//This is the case of the mysql5 plugin
 
-					$this->makeUrls($images,$url->getPath());
+					$this->makeUrls($images,$url->getPath(TRUE));
 
 
 					$this->filterExternalSites($images);
@@ -777,7 +776,7 @@
 
 						foreach($images as $img){
 
-							$file		=	$img->getPath();
+							$file		=	$img->getPath(TRUE);
 
 							if ($this->addFile($this->whatIs($file))){
 								$this->log("Add file $file",0,"light_purple");
@@ -804,7 +803,7 @@
 
 					}
 
-					$this->makeUrls($urls,$url->getPath(),"GET");	//Foreach URI returned by the content makes a URL Object
+					$this->makeUrls($urls,$url->getPath(TRUE),"GET");	//Foreach URI returned by the content makes a URL Object
 					$this->searchForms($url,$dom);
 
 
