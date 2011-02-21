@@ -34,14 +34,12 @@
 					throw(new \Exception("Path $matchPath wasnt found in this url"));
 				}
 
-				foreach($urlPaths as $index=>&$path){
+				$this->_restorePath	=	$urlPaths;
+
+				foreach($urlPaths as $index=>$path){
 
 					if($path == $matchPath){
-
-						$this->_restorePath[]	=	array("index"=>$index,"path"=>$matchPath);
-
-						$path	=	$newPath;
-
+						$urlPaths[$index]	=	urlencode($newPath);
 					}
 
 				}
@@ -50,27 +48,9 @@
 
 			}
 
-			public function restorePath($position=NULL){
+			public function restorePath(){
 	
-				$urlPaths	=	$this->getPathAsArray();
-
-				foreach($this->_restorePath as $pathInfo){
-
-					if(is_int($position)){
-
-						if($pathInfo["index"]==$position){
-							$urlPaths[$position]	=	$pathInfo["path"];
-						}
-
-					}else{
-
-						$urlPaths[$pathInfo["index"]]	=	$pathInfo["path"];
-
-					}
-	
-				}
-
-				$this->setPathArray($urlPaths);
+				$this->setPathArray($this->_restorePath);
 
 			}
 
@@ -373,6 +353,10 @@
 
 				foreach($paths as $key=>$value){
 
+					if($value=='*'){	//Fix for /* query escaping injection
+						continue;
+					}
+
 					if(!empty($value)){
 						$cleanPath[]	=	$value;
 					}
@@ -413,6 +397,16 @@
 
 			public function getVariables(){
 				return $this->_variables;
+			}
+
+			public function getVariable($variableName){
+
+				if(!isset($this->_variables[$variableName])){
+					throw(new \Exception("Unknown variable $variableName"));
+				}
+
+				return $this->_variables[$variableName];
+
 			}
 
 			public function parseRelativePath(Array &$path) {

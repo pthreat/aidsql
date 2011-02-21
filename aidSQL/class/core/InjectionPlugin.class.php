@@ -291,7 +291,7 @@
 
 			}
 
-			protected function query($requestVariable,$injectionMethod=NULL){
+			protected function query($requestVariable,$injectionMethod=NULL,$modRewrite=FALSE){
 
 				if(empty($requestVariable)){
 					throw (new \Exception("Query error: Cannot execute query with no affected url variable set!"));
@@ -315,14 +315,22 @@
 				$count				=	++$this->_queryCount[$injectionMethod];
 				$url					=	$this->_httpAdapter->getUrl();
 				$sql					=	$this->_queryBuilder->getSQL();
-
+	
 				$this->_lastQuery	=	clone($this->_queryBuilder);		//Save last query
 				$this->_queryBuilder->reset();								//Take away previous SQL
 
 				$this->log("[$count][$requestVariable]\t| METHOD: $injectionMethod",0,"light_cyan");
 				$this->log("[QUERY]\t| $sql",0,"yellow");
 
-				$url->addRequestVariable($requestVariable,$sql);
+				if($modRewrite){
+
+					$url->changePath($requestVariable,$sql);
+
+				}else{
+
+					$url->addRequestVariable($requestVariable,$sql);
+
+				}
 
 				$this->_httpAdapter->setUrl($url);
 
@@ -332,11 +340,12 @@
 					$this->_queryResult	=	$content;
 					$this->_totalQueries++;
 
-					if($this->_verbose){
-						$this->log($content);
+					if($this->_config["all"]["verbose"]){
+						$this->log($content,0,"light_cyan");
 					}
 
 					$result	=	$this->_parser->analyze($content);
+
 					return $result;
 
 				}catch(\Exception $e){

