@@ -75,8 +75,9 @@
 		),
 		"verbose"=>array(
 			"values"=>array(
+					0,
 					1,
-					0
+					2
 			)
 		),
 		"immediate-mode"=>array(
@@ -202,6 +203,9 @@
 		),
 		"wanted-schemas"=>array(
 			"required"=>TRUE
+		),
+		"no-schema"=>array(
+			"novalue"=>TRUE
 		),
 		"ommit-schemas"=>array(
 		),

@@ -80,13 +80,18 @@
 				}
 
 				$url	=	new \aidSQL\core\Url($link);
-				$url->addRequestVariable($injection["requestVariable"],$injection["requestValue"]);
 
-				if(isset($injection["requestVariables"])){
+				if(!isset($injection["mod_rewrite"])){
 
-					foreach($injection["requestVariables"] as $name=>$value){
+					$url->addRequestVariable($injection["requestVariable"],$injection["requestValue"]);
 
-						$url->addRequestVariable($name,$value);
+					if(isset($injection["requestVariables"])){
+
+						foreach($injection["requestVariables"] as $name=>$value){
+
+							$url->addRequestVariable($name,$value);
+
+						}
 
 					}
 

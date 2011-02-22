@@ -295,7 +295,7 @@
 		$log->log("PLUGIN\t\t:".$plugin->getPluginName(),0,"light_purple");
 		$log->log("AUTHOR\t\t:".$plugin->getPluginAuthor(),0,"light_purple");
 
-		if($options["schema"]!=="none"){
+		if($options["schema"]!=="none"&&!array_key_exists("no-schema",$options)){
 
 			$schemas		=	$plugin->getAllSchemas();
 

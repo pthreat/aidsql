@@ -268,7 +268,7 @@
 
 			public function setUrl(\aidSQL\core\Url $url){
 
-				if($this->_config["verbose"]==1){
+				if($this->_config["verbose"]==2){
 					$this->log("Normalized URL: ".$url,0,"white");
 				}
 
@@ -462,7 +462,7 @@
 
 				} while($connect < $this->_connectRetry && $errno > 0);
 
-				if($this->_transferInfo["http_code"]!=200){
+				if($this->_transferInfo["http_code"]!=200&&$this->_config["verbose"]==2){
 					$this->log("WARNING: GOT ".$this->_transferInfo["http_code"],2,"yellow");
 				}
 

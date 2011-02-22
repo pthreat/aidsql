@@ -315,12 +315,16 @@
 				$count				=	++$this->_queryCount[$injectionMethod];
 				$url					=	$this->_httpAdapter->getUrl();
 				$sql					=	$this->_queryBuilder->getSQL();
-	
+
 				$this->_lastQuery	=	clone($this->_queryBuilder);		//Save last query
 				$this->_queryBuilder->reset();								//Take away previous SQL
 
-				$this->log("[$count][$requestVariable]\t| METHOD: $injectionMethod",0,"light_cyan");
-				$this->log("[QUERY]\t| $sql",0,"yellow");
+				if($this->_config["all"]["verbose"]==2){
+
+					$this->log("[$count][$requestVariable]\t| METHOD: $injectionMethod",0,"light_cyan");
+					$this->log("[QUERY]\t| $sql",0,"yellow");
+
+				}
 
 				if($modRewrite){
 
@@ -328,6 +332,7 @@
 
 				}else{
 
+					$oldValue	=	$url->getVariable($requestVariable);
 					$url->addRequestVariable($requestVariable,$sql);
 
 				}
@@ -340,11 +345,25 @@
 					$this->_queryResult	=	$content;
 					$this->_totalQueries++;
 
-					if($this->_config["all"]["verbose"]){
+					if($this->_config["all"]["verbose"]==2){
 						$this->log($content,0,"light_cyan");
 					}
 
 					$result	=	$this->_parser->analyze($content);
+
+					//Restore original URL
+
+					if($modRewrite){
+
+						$url->restorePath($requestVariable);
+
+					}else{
+
+						$url->addRequestVariable($requestVariable,$oldValue);
+
+					}
+
+					$this->_httpAdapter->setUrl($url);
 
 					return $result;
 
