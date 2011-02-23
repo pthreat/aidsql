@@ -268,7 +268,7 @@
 
 			public function setUrl(\aidSQL\core\Url $url){
 
-				if($this->_config["verbose"]==2){
+				if(sizeof($this->_config) && $this->_config["verbose"]==2){
 					$this->log("Normalized URL: ".$url,0,"white");
 				}
 

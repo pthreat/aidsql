@@ -109,7 +109,7 @@
 			)
 		),
 		"google"=>array(
-			"overlaps-with"=>array("url")
+			"overlaps-with"=>array("url","bing")
 		),
 		"google-language"=>array(
 			"requires"=>array("google")
@@ -119,6 +119,9 @@
 		),
 		"google-max-results"=>array(
 			"requires"=>array("google")
+		),
+		"bing"=>array(
+			"overlaps-with"=>array("url","google")
 		),
 		"shuffle"=>array(
 		),
