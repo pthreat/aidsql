@@ -138,6 +138,7 @@
 
 			}
 
+
 			private function detectUnionInjection(Array $sqliParams,$callback=NULL,$wrapping=NULL,$offset=1,$value=NULL){
 
 				$this->checkUnionInjectionParameters($sqliParams);
@@ -170,7 +171,6 @@
 
 					}
 
-
 					$iterationContainer	=	array();
 
 					if($offset>1){
@@ -181,17 +181,63 @@
 
 					}
 
+					$fieldPayloadsSize	=	sizeof($sqliParams["field-payloads"]);
+					$commentsSize			=	sizeof($sqliParams["ending-payloads"]["comment"]);
+					$orderSize				=	sizeof($sqliParams["ending-payloads"]["order"]);
+
+					if(!$orderSize){
+						$orderSize	=	1;
+					}
+
+					$limitSize				=	sizeof($sqliParams["ending-payloads"]["limit"]);
+
+					if(!$limitSize){
+						$limitSize	=	1;
+					}
+
+					$totalSize		=	($this->_injectionAttempts*$fieldPayloadsSize*$commentsSize*$orderSize*$limitSize)+1;
+					$totalSize		-=	$offset;
+					$attemptCount	=	1;
+
 					for($maxFields=$offset;$maxFields<=$this->_injectionAttempts;$maxFields++){
 
 						$iterationContainer[]	=	(!empty($value))	?	$value	:	$maxFields;
+	
+						$progressMsg	=	__FUNCTION__.'['.$maxFields."]\t";
+
+						progressBar($attemptCount++,$totalSize,$progressMsg);
 
 						foreach($sqliParams["field-payloads"] as $payLoad){
 
+							$progressMsg = __FUNCTION__.'['.$maxFields."]\t".(empty($payLoad) ? "\" \"" : $payLoad);
+
+							progressBar($attemptCount++,$totalSize,$progressMsg);
+
 							foreach($sqliParams["ending-payloads"]["comment"] as $comment) {
+
+								$progressMsg = __FUNCTION__.'['.$maxFields."]\t".
+								(empty($payLoad) ? "\" \"" : $payLoad).' + '.
+								(empty($comment) ? "\" \"" : $comment);
+
+								progressBar($attemptCount++,$totalSize,$progressMsg);
 
 								foreach($sqliParams["ending-payloads"]["order"] as $order){
 
+									if(sizeof($order)){
+
+										$progressMsg.=" + ".implode($order);
+										progressBar($attemptCount++,$totalSize,$progressMsg);
+
+									}
+
 									foreach($sqliParams["ending-payloads"]["limit"] as $limit){
+
+										if(sizeof($limit)){
+
+											$progressMsg.="+ ".implode($limit);
+											progressBar($attemptCount++,$totalSize,$progressMsg);
+
+										}
 
 										if(!empty($wrapping)){
 											$values	=	$this->wrapArray($iterationContainer,$wrapping);
@@ -264,6 +310,7 @@
 							}	//comment
 
 						}	//field-payload
+
 
 					}	//maxfields
 
@@ -403,9 +450,12 @@
 
 				for($i=0;$i<=$count;$i++){
 
+
 					$this->_injection["limit"]	=	array($i,1);
 					$result			=	$this->unionQuery($value,$from,$where,$group);	
 					$results[$i]	=	$result[0];
+
+					progressBar($i+1,$count,__FUNCTION__ . '['.substr($results[$i],0,strpos($results[$i],'|')).']');
 
 				}
 

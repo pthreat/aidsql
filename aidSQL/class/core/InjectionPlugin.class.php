@@ -342,6 +342,12 @@
 				try{
 
 					$content					=	$this->_httpAdapter->fetch();
+					$code						=	$this->_httpAdapter->getHttpCode();
+
+					if($code==414&&$modRewrite){
+						die("FFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUU\n");
+					}
+
 					$this->_queryResult	=	$content;
 					$this->_totalQueries++;
 
