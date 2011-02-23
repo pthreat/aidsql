@@ -4,19 +4,20 @@
 		die("Usage: ".basename($_SERVER["argv"][0])." <ip>\n");
 	}
 
-	require_once "interface/Log.interface.php";
-	require_once "interface/HttpAdapter.interface.php";
-	require_once "class/log/Logger.class.php";
-	require_once "class/http/eCurl.class.php";
-	require_once "class/webservice/bing/Bing.class.php";
+	set_include_path("lib/aidSQL/");
+	require_once "interface/http/Adapter.interface.php";
+	require_once "class/core/Logger.class.php";
+	require_once "class/core/Url.class.php";
+	require_once "class/http/adapter/Ecurl.class.php";
+	require_once "class/http/webservice/bing/Bing.class.php";
 
-	$log	=	new Logger();
+	$log	=	new \aidSQL\core\Logger();
 	$log->setEcho(TRUE);
 
 	try{
 
-		$http	=	new \eCurl();
-		$bing	=	new aidsql\webservice\Bing($http,$log);
+		$http	=	new \aidSQL\http\Adapter\Ecurl();
+		$bing	=	new \aidSQL\http\webservice\Bing($http,$log);
 		$bing->setLog($log);
 		var_dump($bing->getHosts($_SERVER["argv"][1]));
 
