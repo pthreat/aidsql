@@ -66,6 +66,7 @@
 					throw(new \Exception("Invalid IP or Host specified!"));
 				}
 
+				$ip=trim($ip);
 				if(ip2long($ip)===FALSE){
 	
 					$this->log("Getting DNS records ...");
