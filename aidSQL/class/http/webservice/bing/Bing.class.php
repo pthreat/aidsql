@@ -67,20 +67,24 @@
 				}
 
 				$ip=trim($ip);
+
 				if(ip2long($ip)===FALSE){
 	
 					$this->log("Getting DNS records ...");
 					$dns	=	dns_get_record($ip);
 
-					if(!isset($dns[0]["ip"])){
-						$dns	=	dns_get_record($dns[0]["target"]);
+					foreach($dns as $DNS){
+
+						if($DNS["type"]=="A"){
+							$ip	=	$DNS["ip"];
+							break;
+						}
+
 					}
 
-					if(!isset($dns[0])||!isset($dns[0]["ip"])){
+					if(empty($ip)){
 						throw(new \Exception("Failed getting ip for host $ip"));
 					}
-
-					$ip	=	$dns[0]["ip"];
 
 				}
 
