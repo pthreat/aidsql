@@ -123,6 +123,9 @@
 		"bing"=>array(
 			"overlaps-with"=>array("url","google")
 		),
+		"bingoo"=>array(
+			"overlaps-with"=>array("url","google","bing")
+		),
 		"shuffle"=>array(
 		),
 		"omit-sites"=>array(

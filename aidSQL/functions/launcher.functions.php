@@ -89,6 +89,10 @@
 		$log->log("--google-offset\t\tOffset results (Use with care you can end with no sites)",0,"white");
 		$log->log("--google-shuffle\t\tShuffle search results (default yes)",0,"white");
 
+		$log->log("\nBING\n",0,"light_cyan");	
+		$log->log("--bing\t\t\t\tDo reverse DNS against an ip or host. Audits all sites on a given host",0,"white");
+		$log->log("--bingoo\t\t\tDoes reverse DNS against an ip or host, performs a google site search on each host obtained by bing",0,"white");
+
 		$log->log("\nLOGGING\n",0,"light_cyan");	
 		$log->log("--save-log\t\t\tFile where to dump results",0,"white");
 		$log->log("--save-xml\t\t\tSave obtained schemas in XML format",0,"white");

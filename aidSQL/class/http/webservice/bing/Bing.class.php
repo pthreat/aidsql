@@ -45,12 +45,13 @@
 				$this->_httpAdapter	=	$adapter;
 			}
 
-			public function log($msg = NULL){
+			public function log($msg = NULL,$level=0,$color="white"){
 
 				if(!is_null($this->_log)){
 
 					$this->_log->setPrepend("[".get_class($this)."]");
-					call_user_func_array(array($this->_log, "log"),func_get_args());
+					$this->_log->log($msg,$level,$color);
+
 					return TRUE;
 
 				}
@@ -62,13 +63,22 @@
 			public function getHosts($ip=NULL){
 
 				if(empty($ip)){
-					throw(new \Exception("Invalid IP specified!"));
+					throw(new \Exception("Invalid IP or Host specified!"));
 				}
 
 				if(ip2long($ip)===FALSE){
 	
 					$this->log("Getting DNS records ...");
 					$dns	=	dns_get_record($ip);
+
+					if(!isset($dns[0]["ip"])){
+						$dns	=	dns_get_record($dns[0]["target"]);
+					}
+
+					if(!isset($dns[0])||!isset($dns[0]["ip"])){
+						throw(new \Exception("Failed getting ip for host $ip"));
+					}
+
 					$ip	=	$dns[0]["ip"];
 
 				}
@@ -135,11 +145,13 @@
 						$host	=	substr($host,0,$slashPos);
 					}
 
+					$host	=	new \aidSQL\core\Url(trim($host));
+
 					if(in_array($host,$this->_hosts)){
 						continue;
 					}
 					
-					$this->_hosts[]	=	new \aidSQL\core\Url(trim($host));
+					$this->_hosts[]	=	$host;
 
 					$this->log("Found host $host",0,"white");
 
