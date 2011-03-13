@@ -86,6 +86,10 @@
 
 			}
 
+			public function setTimeOut($seconds=0){
+				$this->setCurlOption('TIMEOUT',(int)$seconds);
+			}
+
 			public function getConnectTimeout(){
 
 				return $this->getCurlOption('CONNECTTIMEOUT');
@@ -462,7 +466,7 @@
 
 				} while($connect < $this->_connectRetry && $errno > 0);
 
-				if($this->_transferInfo["http_code"]!=200&&$this->_config["verbose"]==2){
+				if(($this->_transferInfo["http_code"]!=200&&isset($this->_config["verbose"]))&&$this->_config["verbose"]==2){
 					$this->log("WARNING: GOT ".$this->_transferInfo["http_code"],2,"yellow");
 				}
 
