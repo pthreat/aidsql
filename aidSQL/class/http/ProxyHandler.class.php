@@ -24,10 +24,6 @@
 
 			}
 
-			public function setProxyFile(\aidSQL\core\File $file){
-				echo $file;
-			}
-
 			public function revalidateOnGet($revalidate=TRUE){
 
 				$this->_revalidateOnGet	=	$revalidate;
@@ -86,22 +82,36 @@
 				}
 
 				foreach($proxies as $proxy){
+	
+					$proxy	=	trim($proxy);
+
+					if(empty($proxy)){	//blank line
+						continue;
+					}
 
 					$proxy	=	explode(':',$proxy);
 					$port		=	(isset($proxy[1])&&is_int($proxy[1])) ? $proxy[1]	:	80;
 					$proxy	=	$proxy[0];
 
+
 					//Do host/ip validation  etc,etc
+					if(!empty($proxy)){
 
-					$isValid	=	$this->checkProxy($proxy,$port);
+						$isValid	=	$this->checkProxy($proxy,$port);
 
-					if($isValid){
+						if($isValid){
 
-						$this->log("Found valid proxy $proxy:$port!",0,"light_green");
+							$this->log("Found valid proxy $proxy:$port!",0,"light_green");
+
+						}else{
+
+							$this->log("Invalid proxy $proxy:$port!",1,"red");
+
+						}
 
 					}else{
 
-						$this->log("Invalid proxy $proxy:$port!",1,"red");
+							$this->log("Syntax error on proxy list",2,"yellow");
 
 					}
 
@@ -117,7 +127,6 @@
 				try{	
 
 					$contents	=	trim($this->_httpAdapter->fetch());
-					var_dump($contents);
 					if($contents==$proxy){
 
 						$tmpProxy	=	array("proxy"=>$proxy,"port"=>$port,"valid"=>TRUE);

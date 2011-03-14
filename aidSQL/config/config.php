@@ -64,8 +64,7 @@
 		),
 		"http-adapter"=>array(
 		),
-		"proxy-file"=>array(
-			"requires"=>array("proxy-server")
+		"proxy-list"=>array(
 		),
 		"urlvars"=>array(
 			"requires"=>array("url")

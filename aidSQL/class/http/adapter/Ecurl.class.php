@@ -27,6 +27,7 @@
 				"tunnel"		=>0
 			);
 
+			private		$_proxyHandler		=	NULL;		//Proxy object validator
 			private		$_logger				=	NULL;
 
 			public function __construct(\aidSQL\core\Url $url=NULL){
@@ -108,9 +109,16 @@
 
 			}
 
+			public function setProxyHandler(\aidSQL\http\ProxyHandler $proxyHandler){
+
+				$this->_proxyHandler	=	$proxyHandler;
+
+			}
+
 
 			public function setProxyServer($server){
 
+				$this->log("Setting proxy server to $server",0,"light_cyan");
 				$this->_proxy["server"] = $server;
 
 			}
@@ -388,8 +396,20 @@
 
 			private function configureProxy(){
 
-				if(empty($this->_proxy["server"])){
+				if(empty($this->_proxy["server"])&&is_null($this->_proxyHandler)){
 					return FALSE;
+				}
+
+				if($this->_proxyHandler){
+
+					$proxy	=	$this->_proxyHandler->getValidProxy();
+
+					if(is_null($proxy)){
+						throw(new \Exception("Couldnt get a valid proxy from the proxy handler"));
+					}
+
+					$this->setProxyServer	=	$this->_proxyHandler->getValidProxy();
+
 				}
 
 				$this->setCurlOption("PROXY",$this->_proxy["server"]);
