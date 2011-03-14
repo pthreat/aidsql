@@ -203,19 +203,19 @@
 
 						$iterationContainer[]	=	(!empty($value))	?	$value	:	$maxFields;
 	
-						$progressMsg	=	__FUNCTION__.'['.$maxFields."]\t";
+						$progressMsg	=	$requestVariable.'['.$maxFields."]\t";
 
 						progressBar($attemptCount++,$totalSize,$progressMsg);
 
 						foreach($sqliParams["field-payloads"] as $payLoad){
 
-							$progressMsg = __FUNCTION__.'['.$maxFields."]\t".(empty($payLoad) ? "\" \"" : $payLoad);
+							$progressMsg = $requestVariable.'['.$maxFields."]\t".(empty($payLoad) ? "\" \"" : $payLoad);
 
 							progressBar($attemptCount++,$totalSize,$progressMsg);
 
 							foreach($sqliParams["ending-payloads"]["comment"] as $comment) {
 
-								$progressMsg = __FUNCTION__.'['.$maxFields."]\t".
+								$progressMsg = $requestVariable.'['.$maxFields."]\t".
 								(empty($payLoad) ? "\" \"" : $payLoad).' + '.
 								(empty($comment) ? "\" \"" : $comment);
 

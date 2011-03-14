@@ -241,7 +241,7 @@
 			}	
 
 
-			//Setea la peticion a POST o GET
+			//Sets request to be POST or GET
 
 			public function setMethod ($method=NULL){
 
@@ -404,11 +404,17 @@
 
 					$proxy	=	$this->_proxyHandler->getValidProxy();
 
+					if($this->_config["verbose"]==2){
+						$this->log("Got proxy $proxy[server]:$proxy[port]",0,"light_cyan");
+					}
+
 					if(is_null($proxy)){
 						throw(new \Exception("Couldnt get a valid proxy from the proxy handler"));
 					}
 
-					$this->setProxyServer	=	$this->_proxyHandler->getValidProxy();
+					unset($proxy["valid"]);
+
+					$this->_proxy	=	$proxy;
 
 				}
 

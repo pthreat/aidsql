@@ -90,14 +90,19 @@
 					}
 
 					$proxy	=	explode(':',$proxy);
-					$port		=	(isset($proxy[1])&&is_int($proxy[1])) ? $proxy[1]	:	80;
-					$proxy	=	$proxy[0];
 
+					$port		=	(isset($proxy[1])&&is_int($proxy[1]))	?	$proxy[1]	:	80;		//port
+					$tunnel	=	(isset($proxy[2])&&!empty($proxy[2]))	?	$proxy[2]	:	NULL;		//Proxy tunnel
+					$user		=	(isset($proxy[3])&&!empty($proxy[3]))	?	$proxy[3]	:	NULL;		//Proxy user
+					$pass		=	(isset($proxy[4])&&!empty($proxy[4]))	?	$proxy[4]	:	NULL;		//Proxy password
+					$auth		=	(isset($proxy[5])&&!empty($proxy[5]))	?	$proxy[5]	:	NULL;		//Proxy auth type
+
+					$proxy	=	$proxy[0];
 
 					//Do host/ip validation  etc,etc
 					if(!empty($proxy)){
 
-						$isValid	=	$this->checkProxy($proxy,$port);
+						$isValid	=	$this->checkProxy($proxy,$port,$tunnel,$user,$pass,$auth);
 
 						if($isValid){
 
@@ -119,23 +124,44 @@
 
 			}
 
-			public function checkProxy($proxy,$port=80){
+			public function checkProxy($proxy,$port=80,$tunnel=NULL,$user=NULL,$pass=NULL,$auth=NULL){
 
+				
+				$this->log("Checking proxy $proxy:$port",0,"light_cyan");
 				$this->_httpAdapter->setProxyServer($proxy);
 				$this->_httpAdapter->setProxyPort($port);
+
+				if(!is_null($tunnel)){
+					$this->_httpAdapter->setProxyTunnel($tunnel);
+				}
+
+				if(!is_null($user)){
+					$this->_httpAdapter->setProxyUser($user);
+				}
+
+				if(!is_null($pass)){
+					$this->_httpAdapter->setProxyPassword($pass);
+				}
+
+				if(!is_null($auth)){
+					$this->_httpAdapter->setProxyAuth($auth);
+				}
 
 				try{	
 
 					$contents	=	trim($this->_httpAdapter->fetch());
-					if($contents==$proxy){
 
-						$tmpProxy	=	array("proxy"=>$proxy,"port"=>$port,"valid"=>TRUE);
+					$isValidProxy	=	(ip2long($contents))	?	TRUE	:	FALSE;
 
-					}else{
-
-						$tmpProxy	=	array("proxy"=>$proxy,"port"=>$port,"valid"=>FALSE);
-
-					}
+					$tmpProxy	=	array(
+													"server"		=>	$proxy,
+													"port"		=>	$port,
+													"tunnel"		=>	$tunnel,
+													"user"		=>	$user,
+													"password"	=>	$pass,
+													"auth"		=>	$auth,
+													"valid"		=>	$isValidProxy
+					);
 
 					if(sizeof($this->_proxyList)){
 
@@ -164,13 +190,16 @@
 
 			public function getValidProxy(){
 
-				foreach($this->_proxyList as $proxy){
+				$shuffledProxyList	=	$this->_proxyList;
+				shuffle($shuffledProxyList);
+
+				foreach($shuffledProxyList as $proxy){
 
 					if($proxy["valid"]){
 
 						if($this->_revalidateOnGet){
 
-							if(!$this->checkProxy($proxy["proxy"],$proxy["port"])){
+							if(!$this->checkProxy($proxy["proxy"],$proxy["port"],$proxy["tunnel"],$proxy["user"],$proxy["pass"],$proxy["auth"])){
 
 								continue;
 
