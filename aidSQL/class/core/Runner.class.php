@@ -124,8 +124,6 @@
 
 			private function configureHttpAdapter(Array $options){
 				
-				$this->_httpAdapter->setMethod($options["http-method"]);
-				
 				if(!empty($options["proxy-server"])){
 
 					$this->_httpAdapter->setProxyServer($options["proxy-server"]);
