@@ -39,6 +39,10 @@
 
 			public final function __construct(\aidSQL\http\Adapter $adapter,Array $config,\aidSQL\core\Logger &$log=NULL){
 
+				if(isset($config["all"]["injection-attempts"])){
+					$this->setInjectionAttempts($config["all"]["injection-attempts"]);
+				}
+
 				$this->getInjectionMethods();
 
 				if(!sizeof($this->_injectionMethods)){
@@ -203,7 +207,7 @@
 
 			public function setInjectionAttempts($int=0){
 
-				if(!$int){
+				if(!(int)$int||$int<=0){
 
 					throw(new \Exception("Injection attempts has to be greater than 0"));
 

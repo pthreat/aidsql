@@ -185,6 +185,9 @@
 				switch($auth){
 					case "NTLM":
 					case "BASIC":
+						if($this->_config["verbose"]==2){
+							$this->log("Set proxy AUTH type to $auth");
+						}
 						$this->_proxy["auth"] = $auth;
 					break;
 					default:
@@ -480,7 +483,6 @@
 					$this->_transferInfo	= curl_getinfo($this->_handler);
 
 					$this->setContent($content);
-
 					$errno	=	curl_errno($this->_handler);
 					$error	=	curl_error($this->_handler);
 

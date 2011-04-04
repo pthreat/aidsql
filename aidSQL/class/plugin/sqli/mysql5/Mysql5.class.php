@@ -195,6 +195,7 @@
 						$limitSize	=	1;
 					}
 
+
 					$totalSize		=	($this->_injectionAttempts*$fieldPayloadsSize*$commentsSize*$orderSize*$limitSize)+1;
 					$totalSize		-=	$offset;
 					$attemptCount	=	1;

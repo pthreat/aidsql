@@ -232,7 +232,8 @@
 			"requires"=>array(
 				"makedb"
 			)
-		)
+		),
+		"injection-attempts"=>array()
 		
 	);
 ?>
