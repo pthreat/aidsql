@@ -61,6 +61,8 @@
 			}
 
 			public function parse($url=NULL){
+
+				$dirtyUrl	=	$url;
 	
 				if(is_array($url)){
 					throw(new \Exception("Array given when String was required!"));
@@ -87,6 +89,7 @@
 
 				//SCHEME PARSING
 				/////////////////////////////////////////////////
+
 
 				if(preg_match("#://#",$url)){
 
@@ -123,12 +126,10 @@
 				$length					=	strlen($parsedUrl["host"]);
 				$parsedUrl["path"]	=	substr($url,$length);
 				$dirtyPath				=	$parsedUrl["path"];
+				$tmpPath					=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$this->_queryIndicator));
 
-				$tmpPath	=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$this->_queryIndicator));
-
-				if(!empty($tmpPath)){
-					$parsedUrl["path"]	=	$tmpPath;
-				}
+				$parsedUrl["path"]	=	(empty($tmpPath)) ? '/'	:	$tmpPath;
+				
 
 				//PAGE PARSING
 				/////////////////////////////////////////////////
@@ -182,8 +183,30 @@
 
 				}
 
-				$parsedUrl["path"]			=	$this->parseRelativePath(explode($this->_pathSeparator,$parsedUrl["path"]));
+				$parsedUrl["path"]		=	$this->parseRelativePath(explode($this->_pathSeparator,$parsedUrl["path"]));
+
+				if(preg_match("#:\/\/.*:[0-9]+#",$dirtyUrl)){
+
+					$scheme					=	$parsedUrl["scheme"];
+					$host						=	$parsedUrl["host"];
+					$path						=	$parsedUrl["path"];
+					$port						=	(int)substr($host,strpos($host,':')+1);
+					$parsedUrl["port"]	=	$port;
+					$parsedUrl["host"]	=	substr($parsedUrl["host"],0,(strlen($port)+1)*-1);
+
+				}
+
 				$this->_url	=	$parsedUrl;
+
+			}
+
+			public function getPort(){
+
+				if(isset($this->_url["port"])){
+					return $this->_url["port"];
+				}
+
+				return NULL;
 
 			}
 

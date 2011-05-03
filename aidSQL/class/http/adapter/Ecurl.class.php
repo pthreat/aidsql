@@ -139,6 +139,19 @@
 
 			}
 
+			public function setPort($port=80){
+
+				if(!is_int($port)||$port <=0){
+					throw (new \Exception("Invalid HTTP port specified! Port must be an integer (1-65535)"));
+				}
+
+				if(sizeof($this->_config) && $this->_config["verbose"]==2){
+					$this->log("Set Port: ".$port,0,"white");
+				}
+
+				return $this->setCurlOption("PORT",$port);
+
+			}
 
 			public function setProxyUser($user){
 				$this->_proxy["user"]=$user;
@@ -285,6 +298,12 @@
 
 				if(sizeof($this->_config) && $this->_config["verbose"]==2){
 					$this->log("Normalized URL: ".$url,0,"white");
+				}
+
+				$port	=	$url->getPort();
+
+				if($port){
+					$this->setPort($port);
 				}
 
 				$this->_url = $url;
