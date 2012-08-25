@@ -14,6 +14,7 @@
 			public function __construct($pluginsDir=NULL,\aidSQL\core\Logger &$log=NULL){
 
 				if(!is_null($log)){
+					$log->setEcho(TRUE);
 					$this->setLog($log);
 				}
 
@@ -72,7 +73,7 @@
 				}
 
 				if(!is_readable($dir)){
-					throw(new \Exception("Plugins directory \"$dir\", cant be read, please chek permissions!"));
+					throw(new \Exception("Plugins directory \"$dir\", cant be read, please check permissions!"));
 				}
 
 				$this->_pluginsDir	=	$dir;
@@ -105,64 +106,94 @@
 
 			public function listPlugins(){
 
+				$this->log("Building plugin list ...",0,"light_cyan");
+
 				$plugins	=	array();
 				$types	=	$this->listPluginTypes();
 
-				$this->log("Building plugin list ...",0,"light_cyan");
+				foreach($types as $pluginType){
 
-				foreach($types as $t){
+					$pluginType			=	basename($pluginType);
 
-					$list	=	$this->_list($this->_pluginsDir.DIRECTORY_SEPARATOR.$t,"dirsnodots");
+					$directory			=	$this->_pluginsDir.DIRECTORY_SEPARATOR.$pluginType;
 
-					if(!sizeof($list)){
-						throw(new \Exception("No $t plugins found!"));
+					$pluginSubTypes	=	$this->_list($directory,"dirsnodots");
+
+					if(!sizeof($pluginSubTypes)){
+
+						throw(new \Exception("No $pluginType plugins found!"));
+
 					}
 
-					foreach($list as $plugin){
+					foreach($pluginSubTypes as $pluginSubType){
 
-						$name			=	$this->_normalizePluginName($plugin);
+						$pluginSubType	=	basename($pluginSubType);
 
-						$this->log("Found $t => $name...",0,"white");
+						if($pluginType == "sqli"){
 
-						$confFile	=	$plugin.DIRECTORY_SEPARATOR.strtolower($name).".conf.php";
-						$iniFile		=	$plugin.DIRECTORY_SEPARATOR.strtolower($name).".ini";
-						if(!file_exists($confFile)){
-							throw(new \Exception("Config file not found for plugin \"$name\", if youre developing a plugin, please remember that *every* plugin should have a config file, no matter if its empty"));
+							$database	=	basename($pluginSubType);
+							$directory	=	$this->_pluginsDir.DIRECTORY_SEPARATOR.$pluginType.DIRECTORY_SEPARATOR.$database;
+
+							$this->log("Plugin type $pluginType for Database $database...",0,"white");
+
+						}else{
+
+							$directory	=	$this->_pluginsDir.DIRECTORY_SEPARATOR.$pluginType.DIRECTORY_SEPARATOR.$pluginSubType;
+
 						}
+
+						$pluginList	=	$this->_list($directory,"dirsnodots");
+
+						foreach($pluginList as $plugin){
+
+							$pluginName	=	basename($plugin);
+
+							$this->log("Found $pluginName ...",0,"white");
+
+							$confFile	=	$plugin.DIRECTORY_SEPARATOR."config.php";
+							$iniFile		=	$plugin.DIRECTORY_SEPARATOR."config.ini";
+
+							if(!file_exists($confFile)){
+								throw(new \Exception("Config file not found for plugin \"$plugin\", if youre developing a plugin, please remember that *every* plugin should have a config file, no matter if its empty"));
+							}
 					
-						if(!file_exists($iniFile)){
-							throw(new \Exception("INI file not found for plugin \"$name\", every plugin needs to have a .ini file, no matter if its empty or not! in this case the .ini file should be named $name.ini"));
-						}	
+							if(!file_exists($iniFile)){
+								throw(new \Exception("INI file not found for plugin \"$plugin\", every plugin needs to have a .ini file, no matter if its empty or not! in this case the .ini file should be named $pluginName.ini"));
+							}	
 
-						include $confFile;
+							include $confFile;
 
-						//$config should now be defined by the included config file
+							//$config should now be defined by the included config file
 
-						if(!isset($config)||!is_array($config)){
-							throw(new \Exception("Malformed configuration file found for plugin \"$name\""));
+							if(!isset($config)||!is_array($config)){
+								throw(new \Exception("Malformed configuration file found for plugin \"$pluginName\""));
+							}
+
+							$this->log("Parsing plugin configuration ...",0,"white");
+							$parsedIni	=	parse_ini_file($iniFile);
+							$iniCfg		=	array();
+
+							foreach($parsedIni as $opt=>$value){
+								$iniCfg[]	=	"--$opt=$value";
+							}
+
+							$confObj		=	new \aidSQL\parser\CmdLine($config,$iniCfg);
+							$confObj->setConfig($config);
+							$confObj->setCmdLineOptions($iniCfg);
+
+							$plugin		.= DIRECTORY_SEPARATOR.ucwords($pluginName).".class.php";
+
+							$_plugin = array(
+								"file"=>new \aidSQL\core\File($plugin),
+								"type"=>$pluginType,
+								"subtype"=>$pluginSubType,
+								"name"=>$pluginName,
+								"config"=>$confObj->parse()
+							);
+
+							$plugins[]	=	$_plugin;
+
 						}
-
-						$this->log("Parsing plugin configuration ...",0,"white");
-						$parsedIni	=	parse_ini_file($iniFile);
-						$iniCfg		=	array();
-
-						foreach($parsedIni as $opt=>$value){
-							$iniCfg[]	=	"--$opt=$value";
-						}
-
-						$confObj		=	new \aidSQL\parser\CmdLine($config,$iniCfg);
-						$confObj->setConfig($config);
-						$confObj->setCmdLineOptions($iniCfg);
-						$plugin		.= DIRECTORY_SEPARATOR.ucwords($name).".class.php";
-
-						$_plugin = array(
-							"file"=>new \aidSQL\core\File($plugin),
-							"name"=>$name,
-							"type"=>$t,
-							"config"=>$confObj->parse()
-						);
-
-						$plugins[]	=	$_plugin;
 
 					}
 

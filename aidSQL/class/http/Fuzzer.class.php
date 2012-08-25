@@ -41,7 +41,7 @@
 
 			public function generate404($extension=NULL){
 
-				$url		=	new \aidSQL\core\Url($this->_httpAdapter->getUrl());
+				$url		=	new \aidSQL\parser\Url($this->_httpAdapter->getUrl());
 				$url		=	$url->getScheme()."://".$url->getHost();
 				$result	=	FALSE;
 
@@ -81,7 +81,7 @@
 
 			public function generate414(){
 
-				$url	=	new \aidSQL\core\Url($this->_httpAdapter->getUrl());
+				$url	=	new \aidSQL\parser\Url($this->_httpAdapter->getUrl());
 				$url	=	$url->getScheme()."://".$url->getHost();
 
 				$result	=	FALSE;

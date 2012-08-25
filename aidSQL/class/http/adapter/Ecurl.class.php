@@ -6,7 +6,7 @@
 
 			private		$_cookie					=	NULL;
 			private		$_curlOptions			=	array();
-			private		$_url						=	NULL;		//\aidSQL\core\Url Object
+			private		$_url						=	NULL;		//\aidSQL\parser\Url Object
 			private		$_handler				=	NULL;
 			private		$_content				=	NULL;
 			private		$_requestInterval		=	0;
@@ -30,7 +30,7 @@
 			private		$_proxyHandler		=	NULL;		//Proxy object validator
 			private		$_logger				=	NULL;
 
-			public function __construct(\aidSQL\core\Url $url=NULL){
+			public function __construct(\aidSQL\parser\Url $url=NULL){
 
 				if(!is_null($url)){
 					$this->setUrl($url);
@@ -294,7 +294,7 @@
 
 			}
 
-			public function setUrl(\aidSQL\core\Url $url){
+			public function setUrl(\aidSQL\parser\Url $url){
 
 				if(sizeof($this->_config) && $this->_config["verbose"]==2){
 					$this->log("Normalized URL: ".$url,0,"white");

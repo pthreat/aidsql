@@ -37,7 +37,7 @@
 
 				foreach($result->responseData->results as $searchResult){
 
-					$url = new \aidSQL\core\Url($searchResult->visibleUrl);
+					$url = new \aidSQL\parser\Url($searchResult->visibleUrl);
 
 					if(!in_array($url,$sites)){
 						$sites[] = $url;

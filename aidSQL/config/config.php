@@ -233,7 +233,17 @@
 				"makedb"
 			)
 		),
-		"injection-attempts"=>array()
-		
+		"table-names-like"=>array(
+			"requires"=>array(
+				"makedb"
+			)
+		),
+		"table-fields-like"=>array(
+			"requires"=>array(
+				"makedb"
+			)
+		),
+		"injection-attempts"=>array(
+		)
 	);
 ?>

@@ -11,7 +11,7 @@
 
 				$this->setLog($log);
 
-				parent::__construct($host,$username,$passwd,$dbname,$port,$socket);
+				@parent::__construct($host,$username,$passwd,$dbname,$port,$socket);
 
 				if($this->connect_error){
 					throw(new \Exception("Couldnt connect to database $dbname. ".$this->connect_error));

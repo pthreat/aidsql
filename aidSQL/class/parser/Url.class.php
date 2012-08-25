@@ -1,6 +1,6 @@
 <?php
 
-	namespace aidSQL\core {
+	namespace aidSQL\parser {
 
 		class Url {
 
@@ -400,13 +400,11 @@
 
 			public function getUrlAsString($parameters=TRUE){
 
-				$full	=	$this->_url["scheme"]."://".$this->_url["host"].
-				$this->_pathSeparator.
-				trim($this->getPath(),$this->_pathSeparator);
+				$full	=	$this->_url["fullUrl"];
 
-				if(sizeof($this->_variables)&&$parameters){
+				if(!$parameters){
 
-					$full	.=	$this->_queryIndicator.$this->parseVariables();
+					$full	=	substr($full,0,strpos($full,$this->_queryIndicator));
 
 				}
 

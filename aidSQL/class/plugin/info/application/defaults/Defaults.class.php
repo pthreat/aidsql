@@ -26,7 +26,7 @@
 				foreach($webDirectories as $dir){
 
 					$this->log("$url/$dir ...",0,"white");
-					$this->_httpAdapter->setUrl(new \aidSQL\core\Url($url.'/'.$dir));
+					$this->_httpAdapter->setUrl(new \aidSQL\parser\Url($url.'/'.$dir));
 					$this->_httpAdapter->fetch();
 
 					$httpCode	=	$this->_httpAdapter->getHttpCode();

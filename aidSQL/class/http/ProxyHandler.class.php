@@ -32,7 +32,7 @@
 
 			public function setIpUrl($ipUrl){
 
-				$this->_ipUrl	=	new \aidSQL\core\Url($ipUrl);
+				$this->_ipUrl	=	new \aidSQL\parser\Url($ipUrl);
 
 			}
 

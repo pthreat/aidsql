@@ -52,110 +52,6 @@
 				$this->_config	=	$config;
 			}
 
-			private function parseXML(){
-
-				$dom	=	new \DomDocument("1.0");
-				$dom->load($this->_xmlFile->getFile());
-
-				$host				=	$dom->getElementsByTagName("host")->item(0)->nodeValue;
-				$link				=	$dom->getElementsByTagName("vulnlink")->item(0)->nodeValue;
-				$domInjection	=	$dom->getElementsByTagName("injection")->item(0)->childNodes;
-				$injection		=	array();
-
-				foreach($domInjection as $inject){
-
-					$nodeName		=	$inject->nodeName;
-					$injectChilds	=	$inject->childNodes;
-
-					foreach($injectChilds as $injectChild){
-
-						if(sizeof($injectChild->childNodes)>0){
-							$injection[$nodeName][$injectChild->nodeName]	=	$injectChild->nodeValue;
-						}else{
-							$injection[$nodeName]	=	$injectChild->nodeValue;
-						}
-
-					}
-
-				}
-
-				$url	=	new \aidSQL\core\Url($link);
-
-				if(!isset($injection["mod_rewrite"])){
-
-					$url->addRequestVariable($injection["requestVariable"],$injection["requestValue"]);
-
-					if(isset($injection["requestVariables"])){
-
-						foreach($injection["requestVariables"] as $name=>$value){
-
-							$url->addRequestVariable($name,$value);
-
-						}
-
-					}
-
-				}
-
-				$this->_httpAdapter->setUrl($url);
-
-				$schemasArray	=	array();
-				$schemas			=	$dom->getElementsByTagName("schemas")->item(0)->childNodes;
-
-				foreach($schemas as $schema){
-
-					$schemaName	=	$schema->getAttribute("name");
-					$schemasArray[$schemaName]	=	array();
-					$tables							=	$schema->getElementsByTagName("table");
-
-					foreach($tables as $table){
-
-						$tableAttributes	=	array();
-						$i						=	0;
-
-						$tablesArray		=	array();
-
-						while($table->attributes->item($i)){
-
-							$name							=	$table->attributes->item($i)->name;
-							$value						=	$table->attributes->item($i++)->value;
-
-							$tableAttributes[$name]	=	$value;
-
-						}
-
-						$tableName	=	$tableAttributes["name"];
-						unset($tableAttributes["name"]);
-
-						$tablesArray["attributes"]	=	$tableAttributes;
-
-						$columns			=	$table->childNodes;
-						$columnsArray	=	array();
-
-						foreach($columns as $column){
-
-							$colName		=	$column->getAttribute("name");
-							$columnsArray[$colName]	=	array();
-							$colChilds	=	$column->childNodes;
-							
-							foreach($colChilds as $colChild){
-								$columnsArray[$colName][$colChild->nodeName]	=	$colChild->nodeValue;
-							}
-
-							$tablesArray["columns"]	=	$columnsArray;
-
-						}
-
-						$schemasArray[$schemaName][$tableName]	=	$tablesArray;
-
-					}
-
-				}
-
-				return $schemasArray;
-
-			}
-
 			public function makeDb(){
 		
 				if(!class_exists("MySQLi")){
@@ -170,8 +66,9 @@
 
 				}
 
-				$schemas	=	$this->parseXml();
-				$plugin	=	$this->_pLoader->getPluginInstance("sqli","mysql5",$this->_httpAdapter,$this->_logger);
+				$xmlParser	=	new \aidSQL\parser\RevEngXml();
+				$schemas		=	$xmlParser->parseXml();
+				$plugin		=	$this->_pLoader->getPluginInstance("sqli","mysql5",$this->_httpAdapter,$this->_logger);
 
 				if(!$plugin->injectionUnionWithConcat()){
 					throw (new \Exception("Could not make database, perhaps the sql injection vulnerability was solved?"));

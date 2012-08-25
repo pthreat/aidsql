@@ -80,7 +80,13 @@
 		$log->log("--partial-schema\t\tDont get fields from all tables in the database schema",0,"white");
 		$log->log("--decode-requests\t\tShow decoded requests",0,"white");
 		$log->log("--wanted-schemas\t\t{current} = Get the current schema, {all} = get All, db1,db2,db3 your own choices",0,"white");
+
+		$log->log("\nDATABASE REVERSE ENGINEERING\n",0,"light_cyan");	
 		$log->log("--makedb\t\t\tPath to aidSQL XML generated file (combinable with interactive)",0,"white");
+		$log->log("--dbpass\t\t\tDatabase password for root user",0,"white");
+		$log->log("--dbhost\t\t\tDatabase Host of your MySQL Server",0,"white");
+		$log->log("--table-names-like\t\tOnly reverse engineer table names matching <REGEX>",0,"white");
+		$log->log("--table-fields-like\t\tOnly reverse engineer tables having columns like <REGEX>",0,"white");
 
 		$log->log("\nGOOGLING\n",0,"light_cyan");	
 		$log->log("--google\t\t\t<search term> Just Google it!",0,"white");

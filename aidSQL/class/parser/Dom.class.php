@@ -1,6 +1,6 @@
 <?php
 
-	namespace aidSQL\core {
+	namespace aidSQL\parser {
 
 		class Dom {
 

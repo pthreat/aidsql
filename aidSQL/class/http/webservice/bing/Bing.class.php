@@ -16,7 +16,7 @@
 					$this->setLog($log);
 				}
 
-				$this->_url	=	new \aidSQL\core\Url($this->_url);
+				$this->_url	=	new \aidSQL\parser\Url($this->_url);
 				$adapter->setUrl($this->_url);
 				$this->setHttpAdapter($adapter);
 
@@ -150,7 +150,7 @@
 						$host	=	substr($host,0,$slashPos);
 					}
 
-					$host	=	new \aidSQL\core\Url(trim($host));
+					$host	=	new \aidSQL\parser\Url(trim($host));
 
 					if(in_array($host,$this->_hosts)){
 						continue;

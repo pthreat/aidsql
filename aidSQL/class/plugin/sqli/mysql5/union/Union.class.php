@@ -2,7 +2,7 @@
 
 	namespace aidSQL\plugin\sqli {
 
-		class MySQL5 extends InjectionPlugin {
+		class Union extends InjectionPlugin {
 
 			const		PLUGIN_NAME						= "UNION";
 			const		PLUGIN_AUTHOR					= "Juan Stange";
@@ -925,7 +925,7 @@
 							$this->_queryBuilder->setSQL($sql);
 							parent::query($this->_injection["affectedQueryField"],__FUNCTION__,$this->_injection["mod_rewrite"]);	
 
-							$shellUrl	=	new \aidSQL\core\URL($shellWebLocation);
+							$shellUrl	=	new \aidSQL\parser\Url($shellWebLocation);
 							$this->_httpAdapter->setUrl($shellUrl);
 							$parser		=	parent::getParser();
 							$content		=	$this->_httpAdapter->fetch();

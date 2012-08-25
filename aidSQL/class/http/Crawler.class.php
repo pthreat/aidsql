@@ -23,7 +23,7 @@
 			private	$_urlList			=	array();		//Holds all the urls
 			private	$_config				=	array();		//Holds configuration parameters passed from the command line and config
 
-			public function __construct(\aidSQL\http\Adapter &$httpAdapter,\aidSQL\core\Url $url,\aidSQL\core\Logger &$log){
+			public function __construct(\aidSQL\http\Adapter &$httpAdapter,\aidSQL\parser\Url $url,\aidSQL\core\Logger &$log){
 
 				$httpAdapter->setUrl($url);
 				
@@ -333,7 +333,7 @@
 
 			}
 
-			private function addExternalSite(\aidSQL\core\Url $extUrl){
+			private function addExternalSite(\aidSQL\parser\Url $extUrl){
 
 				foreach($this->_externalUrls as $ext){
 
@@ -356,7 +356,7 @@
 			*@return bool FALSE not crawled
 			*/
 
-			public function wasCrawled(\aidSQL\core\Url $url,$method=NULL){
+			public function wasCrawled(\aidSQL\parser\Url $url,$method=NULL){
 
 				foreach($this->_urlList as $index=>$_url){
 
@@ -449,7 +449,7 @@
 
 					$path	=	(dirname($uri)=='.')	? $path.$this->_host->getPathSeparator() : $this->_host->getPath(TRUE).$this->_host->getPathSeparator();
 
-					$url				=	new \aidSQL\core\Url($this->_host->getScheme()."://"				.
+					$url				=	new \aidSQL\parser\Url($this->_host->getScheme()."://"				.
 																	$this->_host->getHost()							.
 																	$this->_host->getPathSeparator()				.
 																	$path													.
@@ -458,7 +458,7 @@
 
 				}else{
 
-					$url	=	new \aidSQL\core\URL($uri);
+					$url	=	new \aidSQL\parser\Url($uri);
 
 				}
 
@@ -542,7 +542,7 @@
 
 			}
 
-			private function searchForms(\aidSQL\core\Url $url,\aidSQL\core\Dom &$dom){
+			private function searchForms(\aidSQL\parser\Url $url,\aidSQL\parser\Dom &$dom){
 
 				$forms	=	$dom->fetchForms();
 
@@ -595,7 +595,7 @@
 
 			}
 
-			public function addUrl(\aidSQL\core\Url $url=NULL,$method=NULL,$validatePageType=TRUE){
+			public function addUrl(\aidSQL\parser\Url $url=NULL,$method=NULL,$validatePageType=TRUE){
 
 				$method	=	(empty($method))	?	"GET"	:	trim(strtoupper($method));
 
@@ -691,7 +691,7 @@
 
 			}
 
-			public function crawl(\aidSQL\core\Url $url=NULL){
+			public function crawl(\aidSQL\parser\Url $url=NULL){
 
 				$this->log($this->drawLine($this->_depthCount++,0,"light_cyan"));
 
@@ -725,7 +725,7 @@
 				try{
 
 					$requestContent	=	$this->_httpAdapter->fetch();
-					$dom					=	new \aidSQL\core\Dom($requestContent);
+					$dom					=	new \aidSQL\parser\Dom($requestContent);
 
 					if($this->_maxLinks>0){
 
@@ -935,7 +935,7 @@
 
 			}
 
-			public function isExternalSite(\aidSQL\core\Url $url){
+			public function isExternalSite(\aidSQL\parser\Url $url){
 
 				$currentHost	=	$this->_host->getHost();
 				$givenHost		=	$url->getHost();
