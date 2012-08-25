@@ -4,7 +4,7 @@
 		die();
 	}
 
-	mysql_connect("localhost","root","your-password-here");
+	mysql_connect("localhost","root","viceroynextbic");
 	mysql_select_db("aidsqltest");
 
 	function query($sql){
