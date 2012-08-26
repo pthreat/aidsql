@@ -312,7 +312,6 @@
 
 						}	//field-payload
 
-
 					}	//maxfields
 
 				}	//requestVariables
@@ -404,7 +403,7 @@
 			//GROUP_CONCAT is very efficient when you want to have a small footprint, however
 			//some databases can be pretty massive, and the default length of characters brough by GROUP_CONCAT is 1024
 			//in MySQL, in this way we make sure that the retrieved data has not been truncated. 
-			//If it is we can take other action in order to get what we need.
+			//If it is truncated, we can take other action in order to get what we need.
 
 			private function getGroupConcatLength(){
 

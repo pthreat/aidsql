@@ -309,7 +309,6 @@
 					throw (new \Exception("Query error: Cannot execute query with no parser make sure your parser complies with the ParserInterface!"));
 				}
 
-
 				if(!isset($this->_queryCount[$injectionMethod])){
 
 					$count	=	$this->_queryCount[$injectionMethod]=0;
@@ -331,7 +330,6 @@
 				}
 
 				if($modRewrite){
-
 					$url->changePath($requestVariable,$sql);
 
 				}else{

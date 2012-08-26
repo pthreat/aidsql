@@ -126,10 +126,11 @@
 				$length					=	strlen($parsedUrl["host"]);
 				$parsedUrl["path"]	=	substr($url,$length);
 				$dirtyPath				=	$parsedUrl["path"];
-				$tmpPath					=	substr($parsedUrl["path"],0,strpos($parsedUrl["path"],$this->_queryIndicator));
+				$tmpPath					=	substr($parsedUrl["path"],0,strrpos($parsedUrl["path"],$this->_pathSeparator));
 
-				$parsedUrl["path"]	=	(empty($tmpPath)) ? '/'	:	$tmpPath;
-				
+				$tmpPath					=	trim($tmpPath,$this->_pathSeparator);
+
+				$parsedUrl["path"]	=	(empty($tmpPath)) ? $this->_pathSeparator	:	$tmpPath;
 
 				//PAGE PARSING
 				/////////////////////////////////////////////////
@@ -184,6 +185,10 @@
 				}
 
 				$parsedUrl["path"]		=	$this->parseRelativePath(explode($this->_pathSeparator,$parsedUrl["path"]));
+
+				if($parsedUrl["path"]!==$this->_pathSeparator){
+					$parsedUrl["path"]		=	trim($parsedUrl["path"],$this->_pathSeparator);
+				}
 
 				if(preg_match("#:\/\/.*:[0-9]+#",$dirtyUrl)){
 
@@ -359,11 +364,7 @@
 				return $this->_url["host"];
 			}
 
-			public function getPath($withoutFile=FALSE){
-
-				if($withoutFile&&!empty($this->_url["page"])){
-					return substr($this->_url["path"],0,strlen($this->_url["page"])*-1);
-				}
+			public function getPath(){
 
 				return $this->_url["path"];
 
@@ -400,11 +401,20 @@
 
 			public function getUrlAsString($parameters=TRUE){
 
-				$full	=	$this->_url["fullUrl"];
+				$full	=	$this->_url["scheme"]."://".$this->_url["host"];
+				$path	=	(isset($this->_url["path"]))	?	'/'.trim($this->_url["path"],'/') : '/';
+				$page	=	(isset($this->_url["page"]))	?	'/'.trim($this->_url["page"],'/') : NULL;
 
-				if(!$parameters){
+				if($path==$this->_pathSeparator){
+					$path=NULL;
+				}
 
-					$full	=	substr($full,0,strpos($full,$this->_queryIndicator));
+				$full	.=	$path.$page;
+
+
+				if(sizeof($this->_variables)&&$parameters){
+
+					$full	.=	$this->_queryIndicator.$this->parseVariables();
 
 				}
 
