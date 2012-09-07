@@ -8,6 +8,7 @@
 
 		echo "SCHEME:\t\t\t".var_export($url->getScheme(),TRUE)."\n";
 		echo "HOST:\t\t\t".var_export($url->getHost(),TRUE)."\n";
+		echo "PATH:\t\t\t".var_export($url->getPath(),TRUE)."\n";
 		echo "PAGE:\t\t\t".var_export($url->getPage(),TRUE)."\n";
 		echo "getQueryAsString:\t\t\t".var_export($url->getQueryAsString(),TRUE)."\n";
 		echo "getQueryAsArray:\t\t\t".var_export($url->getQueryAsArray(),TRUE)."\n";
