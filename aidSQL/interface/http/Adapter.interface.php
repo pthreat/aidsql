@@ -19,6 +19,9 @@
 			public function setProxyType($type);
 			public function getHttpCode();
 			public function setLog(\aidSQL\core\Logger &$log);
+			public function getHttpAdapterName();
+			public function getHttpAdapterVersion();
+			
 	
 		}
 

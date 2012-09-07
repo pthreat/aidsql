@@ -113,6 +113,8 @@
 
 				foreach($types as $pluginType){
 
+					$this->log("Checking for \"$pluginType\" plugins ...",0,"white");
+
 					$pluginType			=	basename($pluginType);
 
 					$directory			=	$this->_pluginsDir.DIRECTORY_SEPARATOR.$pluginType;
@@ -134,7 +136,7 @@
 							$database	=	basename($pluginSubType);
 							$directory	=	$this->_pluginsDir.DIRECTORY_SEPARATOR.$pluginType.DIRECTORY_SEPARATOR.$database;
 
-							$this->log("Plugin type $pluginType for Database $database...",0,"white");
+							$this->log("Database type $database...",0,"white");
 
 						}else{
 

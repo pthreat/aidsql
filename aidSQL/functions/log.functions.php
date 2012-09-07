@@ -2,7 +2,7 @@
 
 	//This file will contain HTML and XML logging functions
 
-	function makeXML(\aidSQL\plugin\sqli\InjectionPlugin &$plugin,Array &$schemas){
+	function makeXML(\aidSQL\plugin\sqli\SQLiResult $plugin,Array &$schemas){
 
 		$dom			=	new \DomDocument('1.0','utf-8');
 		$main			=	$dom->createElement("aidSQL");
@@ -23,7 +23,6 @@
 		$pluginDom->appendChild($dom->createElement("plugin",$plugin->getPluginName()));
 		$pluginDom->appendChild($dom->createElement("author",$plugin->getPluginAuthor()));
 
-		$sqliDetails->appendChild($pluginDom);
 
 		$injectionParameters	=	$plugin->getInjectionParameters();
 
@@ -53,7 +52,9 @@
 
 		}
 
-		$sqliDetails->appendChild($domInjection);
+		$pluginDom->appendChild($domInjection);
+		$sqliDetails->appendChild($pluginDom);
+
 		$main->appendChild($sqliDetails);
 
 		$domSchemas	=	$dom->createElement("schemas");

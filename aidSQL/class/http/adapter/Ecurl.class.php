@@ -2,7 +2,10 @@
 
 	namespace aidSQL\http\Adapter {
 
-		class Ecurl implements \aidSQL\http\Adapter{
+		class Ecurl extends \aidSQL\http\Adapter {
+
+			const			ADAPTER_NAME			=	"ECurl";
+			const			ADAPTER_VERSION		=	"1.0";
 
 			private		$_cookie					=	NULL;
 			private		$_curlOptions			=	array();
@@ -580,6 +583,7 @@
 			}
 
 		}
+
 
 	}
 ?>

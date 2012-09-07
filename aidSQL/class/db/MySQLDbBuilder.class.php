@@ -66,8 +66,9 @@
 
 				}
 
-				$xmlParser	=	new \aidSQL\parser\RevEngXml();
-				$schemas		=	$xmlParser->parseXml();
+				$xmlInfo		=	new \aidSQL\parser\RevEngXml($this->_xmlFile);
+				var_dump($xmlInfo);	
+				die();
 				$plugin		=	$this->_pLoader->getPluginInstance("sqli","mysql5",$this->_httpAdapter,$this->_logger);
 
 				if(!$plugin->injectionUnionWithConcat()){
